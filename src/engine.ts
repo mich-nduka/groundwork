@@ -145,6 +145,7 @@ export interface NewResult extends EngineResult {
   name: string;
   groundworkVersion: string;
   files: number;
+  agents: string[];
   init: InitPlan;
 }
 
@@ -156,6 +157,8 @@ export interface Project {
   hasEngine: boolean;
   /** Its groundwork.py supports --json and `config` (Groundwork 3.1+). */
   hasJsonEngine: boolean;
+  /** Its groundwork.py has status, docs, mark and connect (Groundwork 3.2+). */
+  hasOnboarding: boolean;
   /** This is the template bundled with the CLI, not a user's project. */
   isBundledTemplate: boolean;
 }
@@ -190,10 +193,12 @@ export function findProject(start = process.cwd()): Project | null {
   for (;;) {
     if (isProject(dir)) {
       const engine = join(dir, "scripts", "groundwork.py");
+      const source = existsSync(engine) ? readFileSync(engine, "utf8") : "";
       return {
         root: dir,
         hasEngine: existsSync(engine),
-        hasJsonEngine: existsSync(engine) && readFileSync(engine, "utf8").includes('"--json"'),
+        hasJsonEngine: source.includes('"--json"'),
+        hasOnboarding: source.includes("def cmd_status("),
         isBundledTemplate: same(dir, TEMPLATE_ROOT),
       };
     }

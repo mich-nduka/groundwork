@@ -1,0 +1,1035 @@
+{
+  "schema": 1,
+  "questions": {
+    "what_building": {
+      "ask": "What are you building, in a sentence or two?",
+      "why": "Everything else builds on this. It becomes the description in PROJECT.md.",
+      "examples": ["A booking app for a small physiotherapy clinic", "An internal API that prices insurance quotes", "A portfolio site for a photographer"]
+    },
+    "project_status": {
+      "ask": "Where does the project stand today: an idea, being designed, being built, live, or in maintenance?",
+      "why": "It tells everyone how settled the documents should be."
+    },
+    "project_owner": {
+      "ask": "Who makes the final calls on this project, if anyone besides you?"
+    },
+    "project_constraints": {
+      "ask": "Is anything limiting the work: a deadline, a budget, team size, or a platform or regulatory commitment?",
+      "why": "Constraints shape what is realistic before any design starts. 'None that matter yet' is a fine answer.",
+      "examples": ["Must launch before the September intake", "One developer, evenings only", "Has to run on the client's existing Azure account"]
+    },
+    "profile_fit": {
+      "ask": "Which of these describes what the system does: publishes content people read, lets people do work with their own data, provides services other software depends on, or produces results with AI models at run time?",
+      "why": "Groundwork's profiles add the documents each kind of system needs. They are chosen by what the system does, never by the technology.",
+      "explain": "A profile is a bundle of documents and checks for one kind of system: web, application, backend-api and ai-systems. Several can apply at once.",
+      "confirm": true
+    },
+    "problem": {
+      "ask": "What problem are people having today that this should solve?",
+      "why": "Starting from the problem keeps the product from turning into a list of features nobody needs.",
+      "examples": ["Members track savings contributions in a shared spreadsheet and errors go unnoticed", "Visitors can't find opening hours on the current site"]
+    },
+    "existing_alternatives": {
+      "ask": "How do people deal with it now, and what's wrong with that?",
+      "why": "The current workaround shows what the product must beat."
+    },
+    "primary_users": {
+      "ask": "Who will use it most, and what are they trying to get done?"
+    },
+    "user_types": {
+      "ask": "Are there other kinds of people involved, such as administrators, staff, partners or people who pay, with different needs or permissions?",
+      "why": "Different kinds of users usually mean different screens, rules and permissions."
+    },
+    "desired_outcomes": {
+      "ask": "If this works, what is different for the people using it, and for you or the business?",
+      "examples": ["A member checks their balance without asking the treasurer", "Support resolves requests faster", "A visitor finds what they need and gets in touch"]
+    },
+    "capabilities": {
+      "ask": "What are the main things people must be able to do with it?",
+      "why": "Each becomes a capability with a CAP- ID that requirements and tests trace back to.",
+      "confirm": true
+    },
+    "scope_in": {
+      "ask": "What must the first version include?",
+      "confirm": true
+    },
+    "scope_out": {
+      "ask": "What are you deliberately leaving out, at least for now?",
+      "why": "Writing exclusions down stops them creeping back in."
+    },
+    "key_journeys": {
+      "ask": "Walk me through the most important thing someone does, from start to finish.",
+      "why": "End-to-end journeys become the critical tests later."
+    },
+    "success_measures": {
+      "ask": "How would you know it's working? Is there anything you could count or observe?",
+      "examples": ["Weekly active members", "Time to answer a support request", "Enquiries per month from the site"]
+    },
+    "product_risks": {
+      "ask": "What could make this fail, or what are you assuming is true that you haven't checked?",
+      "examples": ["Members are willing to switch from the spreadsheet", "The payment provider approves us in time"]
+    },
+    "functional_requirements": {
+      "ask": "From the capabilities, here are the testable requirements I would write. Do they match what you intend?",
+      "why": "Requirements are what the system must do, written so a test can prove it. The agent drafts them from the PRD; you confirm them.",
+      "confirm": true
+    },
+    "quality_expectations": {
+      "ask": "Are there expectations about how well it must work: speed, availability, accessibility, privacy, or how many people use it at once?",
+      "why": "These become non-functional requirements: qualities rather than features.",
+      "explain": "A non-functional requirement describes how well the system works rather than what it does, for example 'pages load in under two seconds'.",
+      "examples": ["Usable on a cheap phone over a slow connection", "Meets WCAG 2.2 AA", "Must stay up during exam week"]
+    },
+    "system_constraints": {
+      "ask": "Are there technical limits the system must respect: existing systems, required platforms, hosting rules, or technology you've already committed to?",
+      "why": "Only real constraints belong here. Preferences can wait until the design is clearer."
+    },
+    "business_rules": {
+      "ask": "Are there rules the system must always follow, whatever the screen or feature?",
+      "explain": "A business rule is a rule from the real world the software must enforce, such as 'a loan can't exceed twice a member's savings'.",
+      "confirm": true
+    },
+    "acceptance_criteria": {
+      "ask": "For the system as a whole, what must be true before you'd call a release acceptable?",
+      "confirm": true
+    },
+    "architecture_known": {
+      "ask": "Do you already know roughly how it will be built, for example one app, an app plus a backend, or several services? Or should we work that out from the requirements?",
+      "why": "Not knowing yet is fine. The architecture should follow from what the system must do.",
+      "confirm": true
+    },
+    "external_systems": {
+      "ask": "What outside systems or services does it talk to or depend on?",
+      "examples": ["A payment provider", "The company's single sign-on", "An email service", "A government API"]
+    },
+    "cross_cutting": {
+      "ask": "Are there concerns that touch the whole system, such as privacy, compliance, accessibility or performance, that the design must account for everywhere?"
+    },
+    "key_decisions": {
+      "ask": "Have any significant technical decisions already been made, and why?",
+      "why": "Decisions that are expensive to reverse get an ADR, a short record of the decision and its reasons.",
+      "confirm": true
+    },
+    "agent_code_standards": {
+      "ask": "Are there coding conventions the agent should follow: naming, layout, how errors and types are handled?",
+      "applies_when": "Code is being written."
+    },
+    "tooling": {
+      "ask": "Which tools format, lint, type-check and test the code, and which must pass in CI?",
+      "applies_when": "Code and its tooling exist."
+    },
+    "build_prerequisites": {
+      "ask": "What does someone need installed, and how do they set up, run and test the project locally?",
+      "applies_when": "There is something to run."
+    },
+    "security_scope": {
+      "ask": "What in this system is worth protecting: personal data, money, accounts, secrets, or availability?",
+      "why": "Security effort should match what is actually at risk.",
+      "confirm": true
+    },
+    "access_model": {
+      "ask": "How do people sign in, and who is allowed to see or change what?",
+      "explain": "Authentication is proving who someone is. Authorisation is deciding what they may do.",
+      "confirm": true
+    },
+    "sensitive_data": {
+      "ask": "What sensitive data does it handle, where is it stored, and who must never see it?",
+      "why": "Only describe the kinds of data. Never paste real secrets, passwords or keys here.",
+      "confirm": true
+    },
+    "interface_threats": {
+      "ask": "Where does untrusted input enter the system, and what would an attacker most want to do?",
+      "explain": "A trust boundary is where data crosses from something you don't control (a browser, a partner, the internet) into something you do."
+    },
+    "dependency_policy": {
+      "ask": "How are third-party libraries and services chosen, updated and checked for known problems?"
+    },
+    "security_logging": {
+      "ask": "What security events must be logged, and who responds when something goes wrong?"
+    },
+    "security_verification": {
+      "ask": "How will security be checked: reviews, automated scans, tests of permission rules?"
+    },
+    "quality_objectives": {
+      "ask": "What would hurt most if it broke? Which parts need the most confidence?",
+      "why": "Testing effort follows risk. Tools come later."
+    },
+    "test_layers": {
+      "ask": "Roughly how should testing be split: fast unit tests, tests that use real dependencies, end-to-end tests of whole journeys?",
+      "explain": "Unit tests check one small piece in isolation. Integration tests check pieces working together. End-to-end tests drive the whole system like a user would."
+    },
+    "critical_scenarios": {
+      "ask": "Which journeys and failure cases must always be tested before a release?"
+    },
+    "test_data": {
+      "ask": "What test data and environments are needed, and is any of it sensitive?"
+    },
+    "release_gates": {
+      "ask": "What must pass before a change can ship?"
+    },
+    "repository_layout": {
+      "ask": "Will the parts of the system be built, deployed and owned together, or separately?",
+      "why": "Start with the simplest layout that handles real constraints: one app, a monorepo, or several repositories.",
+      "applies_when": "The repository has more than one deployable part, or the layout is being chosen."
+    },
+    "domain_concepts": {
+      "ask": "What are the main things the system keeps track of, and how do they relate?",
+      "explain": "These are the nouns of the system, such as Member, Contribution and Loan, and the links between them.",
+      "examples": ["A member has many contributions", "A booking belongs to one clinician and one patient"]
+    },
+    "state_lifecycle": {
+      "ask": "Do any of those things move through stages, and what moves them along?",
+      "examples": ["A loan goes from requested to approved to repaid", "An order goes from placed to paid to shipped"]
+    },
+    "data_ownership": {
+      "ask": "Who owns each kind of data, how long is it kept, and can it be deleted?",
+      "confirm": true
+    },
+    "invariants": {
+      "ask": "Which rules must never be broken, even if two people act at the same moment?",
+      "explain": "An invariant is a rule that must always hold, such as 'a balance never goes below zero'.",
+      "confirm": true
+    },
+    "triggers": {
+      "ask": "What starts each important operation: a person, a schedule, another system, a payment arriving?"
+    },
+    "validation_rules": {
+      "ask": "What input is rejected, and what must be true before and after each important operation?"
+    },
+    "components": {
+      "ask": "What are the main parts of the system and what is each responsible for?",
+      "confirm": true
+    },
+    "communication": {
+      "ask": "How do the parts talk to each other and to outside systems: direct requests, messages, shared data?"
+    },
+    "technology_choices": {
+      "ask": "Which technologies have been chosen, and what drove each choice?",
+      "why": "Record choices once they are made, with their reasons. Groundwork never picks technology for you.",
+      "confirm": true
+    },
+    "runtime_model": {
+      "ask": "What runs where, and does anything happen in the background or at the same time as something else?"
+    },
+    "failure_handling": {
+      "ask": "What happens when something fails part-way: a payment times out, a server restarts, a message is delivered twice?",
+      "explain": "Idempotency means doing something twice has the same effect as doing it once, which makes retries safe."
+    },
+    "recovery": {
+      "ask": "How does the system recover, and how much data loss or downtime is acceptable?",
+      "confirm": true
+    },
+    "operating_model": {
+      "ask": "Who deploys and runs the system, and on what kind of hosting?"
+    },
+    "observability": {
+      "ask": "How will you know it is healthy, and how will you find out what went wrong?",
+      "explain": "Observability is the logs, metrics and traces that let you see what a running system is doing."
+    },
+    "scaling": {
+      "ask": "How much use do you expect, and how should it cope with growth or spikes?"
+    },
+    "ui_surfaces": {
+      "ask": "What screens or views are there, and which kinds of users see each?"
+    },
+    "interaction_mapping": {
+      "ask": "For the important screens, which user actions change data or start work in the system?"
+    },
+    "experience_principles": {
+      "ask": "How should using the product feel? Pick a few words or principles.",
+      "examples": ["Calm and trustworthy", "Fast for experts, forgiving for beginners", "Playful but never confusing"]
+    },
+    "brand_identity": {
+      "ask": "Is there an existing brand (logo, colours, typefaces), or are we creating a visual direction from scratch?",
+      "applies_when": "The product has a visual identity to define or follow."
+    },
+    "design_tokens": {
+      "ask": "Do you need shared design tokens, the named colours, sizes and spacing that keep screens consistent, or are a few documented values enough for now?",
+      "explain": "A design token is a named value such as color.text.primary that designers and code both use."
+    },
+    "component_conventions": {
+      "ask": "Are you using an existing component library, or building your own components?"
+    },
+    "ux_states": {
+      "ask": "How should screens behave while loading, when empty, and when something fails?"
+    },
+    "accessibility": {
+      "ask": "Which accessibility standard should the interface meet, and which devices and screen sizes must it support?",
+      "examples": ["WCAG 2.2 AA on phone and desktop", "Keyboard-only use for the admin area"]
+    },
+    "information_architecture": {
+      "ask": "How is the product organised: main areas, navigation, and how people find things?"
+    },
+    "design_governance": {
+      "ask": "Who owns design decisions, and where does the source of truth for designs live?",
+      "applies_when": "More than one person designs or builds the interface."
+    },
+    "contract_consumers": {
+      "ask": "Which interfaces do other teams, partners or separately released clients depend on, and how will changes stay compatible?",
+      "explain": "A contract is the written promise of how an interface behaves, so consumers can rely on it while it changes."
+    }
+  },
+  "documents": {
+    "PROJECT.md": {
+      "purpose": "The cover page: project identity, status, constraints and active profiles. Product substance lives in the PRD.",
+      "stage": "discovery",
+      "priority": 1,
+      "skip": "Keep the file. The name and description come from create-groundwork; record the rest when known.",
+      "sections": [
+        {
+          "id": "basics",
+          "heading": "The basics",
+          "required": true,
+          "questions": ["what_building", "project_status", "project_owner"],
+          "done_when": "Name, description and status are filled in, and the owner if there is one."
+        },
+        {
+          "id": "constraints",
+          "heading": "Project constraints",
+          "required": true,
+          "questions": ["project_constraints"],
+          "done_when": "Known limits are recorded, or the section says there are none yet."
+        },
+        {
+          "id": "profiles",
+          "heading": "Profiles",
+          "required": true,
+          "questions": ["profile_fit"],
+          "uses": ["what_building", "capabilities"],
+          "done_when": "The Profiles line names the profiles the developer agreed to, and Why explains the choice by what the system does."
+        }
+      ]
+    },
+    "docs/product/PRD.md": {
+      "purpose": "The source of truth for product intent: the problem, users, outcomes, capabilities, scope and success measures. No implementation detail.",
+      "stage": "discovery",
+      "priority": 2,
+      "depends_on": ["PROJECT.md"],
+      "skip": "A required document: if skipped, it stays in place and is reported as incomplete. Work proceeds from what the developer says, and gaps are flagged when they matter.",
+      "sections": [
+        {
+          "id": "problem",
+          "heading": "Problem",
+          "required": true,
+          "questions": ["problem", "existing_alternatives"],
+          "uses": ["what_building"],
+          "done_when": "The problem is stated without naming a solution, together with how people cope today."
+        },
+        {
+          "id": "users",
+          "heading": "Users and stakeholders",
+          "required": true,
+          "questions": ["primary_users", "user_types"],
+          "done_when": "The main users and any other affected groups are named, with what each needs."
+        },
+        {
+          "id": "outcomes",
+          "heading": "What success looks like",
+          "required": true,
+          "questions": ["desired_outcomes"],
+          "done_when": "Outcomes describe results for users and the business, not features."
+        },
+        {
+          "id": "capabilities",
+          "heading": "Product capabilities",
+          "required": true,
+          "questions": ["capabilities"],
+          "uses": ["problem", "primary_users"],
+          "done_when": "Each capability has a CAP-NNN ID, a description, why users care and a priority, and the developer has confirmed the list."
+        },
+        {
+          "id": "scope",
+          "heading": "Scope",
+          "required": true,
+          "questions": ["scope_in", "scope_out"],
+          "done_when": "In scope and out of scope are both listed and confirmed."
+        },
+        {
+          "id": "journeys",
+          "heading": "Key user journeys",
+          "required": false,
+          "questions": ["key_journeys"],
+          "done_when": "The important end-to-end journeys are described in steps."
+        },
+        {
+          "id": "measures",
+          "heading": "How we'll measure success",
+          "required": false,
+          "questions": ["success_measures"],
+          "uses": ["desired_outcomes"],
+          "done_when": "Each measure has a target and a way to measure it, or is marked unknown."
+        },
+        {
+          "id": "risks",
+          "heading": "Risks, assumptions and dependencies",
+          "required": false,
+          "questions": ["product_risks"],
+          "done_when": "Known risks and untested assumptions are listed."
+        },
+        {
+          "id": "open-questions",
+          "heading": "Open questions",
+          "required": false,
+          "done_when": "Unresolved product questions are listed, each with who can answer it."
+        }
+      ]
+    },
+    "docs/product/SPEC.md": {
+      "purpose": "Testable, system-wide requirements with stable IDs, derived from the approved PRD.",
+      "stage": "design",
+      "priority": 10,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "Required: if skipped, it is reported as incomplete. Feature specs can still be written; they then carry the requirements themselves.",
+      "sections": [
+        {
+          "id": "purpose",
+          "heading": "1. Purpose",
+          "required": true,
+          "uses": ["what_building", "problem"],
+          "done_when": "States what the system is for, referring to the PRD rather than repeating it."
+        },
+        {
+          "id": "scope",
+          "heading": "2. System Scope",
+          "required": true,
+          "uses": ["scope_in", "scope_out"],
+          "done_when": "System boundaries follow the PRD scope."
+        },
+        {
+          "id": "context",
+          "heading": "3. System Context",
+          "required": false,
+          "uses": ["external_systems", "user_types"],
+          "done_when": "Users and outside systems the system interacts with are named."
+        },
+        {
+          "id": "functional",
+          "heading": "4. System-Wide Functional Requirements",
+          "required": true,
+          "questions": ["functional_requirements"],
+          "uses": ["capabilities"],
+          "done_when": "Each requirement has a stable ID, names the capability it serves, is testable, and has been confirmed."
+        },
+        {
+          "id": "non-functional",
+          "heading": "5. Non-Functional Requirements",
+          "required": true,
+          "questions": ["quality_expectations"],
+          "done_when": "Quality expectations are measurable, or explicitly unknown with a note."
+        },
+        {
+          "id": "constraints",
+          "heading": "6. System Constraints",
+          "required": false,
+          "questions": ["system_constraints"],
+          "uses": ["project_constraints"],
+          "done_when": "Real constraints are listed; preferences are not."
+        },
+        {
+          "id": "business-rules",
+          "heading": "7. Global Business Rules",
+          "required": false,
+          "questions": ["business_rules"],
+          "done_when": "Rules that apply everywhere are listed with IDs and confirmed."
+        },
+        {
+          "id": "acceptance",
+          "heading": "8. Global Acceptance Criteria",
+          "required": false,
+          "questions": ["acceptance_criteria"],
+          "done_when": "System-wide release criteria are listed and confirmed."
+        },
+        {
+          "id": "feature-index",
+          "heading": "9. Feature Specification Index",
+          "required": false,
+          "done_when": "Every feature spec in docs/product/specs/ is listed."
+        },
+        {
+          "id": "open-questions",
+          "heading": "10. Open Questions",
+          "required": false,
+          "done_when": "Unresolved requirement questions are listed."
+        }
+      ]
+    },
+    "docs/architecture/SYSTEM_DESIGN.md": {
+      "purpose": "The architecture starting point and index: the system's shape, context, cross-cutting concerns and key decisions. Detail lives in system-design/.",
+      "stage": "design",
+      "priority": 20,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "Required: if skipped, it is reported as incomplete. Architecture is recorded once the requirements justify it.",
+      "sections": [
+        {
+          "id": "summary",
+          "heading": "Summary",
+          "required": true,
+          "questions": ["architecture_known"],
+          "done_when": "The system's shape is summarised, or the summary says what is still undecided and what it depends on."
+        },
+        {
+          "id": "context",
+          "heading": "Context and high-level view",
+          "required": true,
+          "questions": ["external_systems"],
+          "done_when": "Users, outside systems and the system boundary are described."
+        },
+        {
+          "id": "cross-cutting",
+          "heading": "Cross-cutting concerns",
+          "required": false,
+          "questions": ["cross_cutting"],
+          "uses": ["quality_expectations"],
+          "done_when": "Concerns that touch the whole system are named, with where each is handled."
+        },
+        {
+          "id": "decisions",
+          "heading": "Key decisions",
+          "required": false,
+          "questions": ["key_decisions"],
+          "done_when": "Each significant decision links to an ADR."
+        },
+        {
+          "id": "open-questions",
+          "heading": "Open questions and risks",
+          "required": false,
+          "done_when": "Undecided architecture questions are listed."
+        }
+      ]
+    },
+    "AGENTS.md": {
+      "purpose": "How agents work in this repository: rules, code standards, tooling, workflow and definition of done.",
+      "stage": "as-needed",
+      "priority": 70,
+      "skip": "Keep the defaults until code exists; fill in standards and tooling when the first code is written.",
+      "sections": [
+        {
+          "id": "code-standards",
+          "heading": "Code standards",
+          "required": false,
+          "questions": ["agent_code_standards"],
+          "done_when": "The placeholder guidance is replaced with the project's conventions."
+        },
+        {
+          "id": "tooling",
+          "heading": "Tooling",
+          "required": true,
+          "questions": ["tooling"],
+          "done_when": "Every row names a tool and whether it must pass in CI, or says why it doesn't apply."
+        }
+      ]
+    },
+    "BUILD.md": {
+      "purpose": "How to set up, run and test the project locally.",
+      "stage": "as-needed",
+      "priority": 75,
+      "skip": "Fill in once there is something to run.",
+      "sections": [
+        {
+          "id": "prerequisites",
+          "heading": "Prerequisites",
+          "required": true,
+          "questions": ["build_prerequisites"],
+          "done_when": "A new developer could install what's needed from this list."
+        },
+        {
+          "id": "setup",
+          "heading": "Setup",
+          "required": true,
+          "uses": ["build_prerequisites"],
+          "done_when": "Setup steps are listed and have been run once."
+        },
+        {
+          "id": "run",
+          "heading": "Run locally",
+          "required": true,
+          "uses": ["build_prerequisites"],
+          "done_when": "The command to run the project locally is listed."
+        },
+        {
+          "id": "test",
+          "heading": "Test",
+          "required": true,
+          "uses": ["tooling"],
+          "done_when": "The commands to run the tests are listed."
+        }
+      ]
+    },
+    "docs/engineering/SECURITY.md": {
+      "purpose": "Security requirements proportionate to what is at risk: access, data protection, input, dependencies, logging and verification.",
+      "stage": "design",
+      "priority": 40,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "If a profile requires it, skipping leaves it incomplete. In a core-only project with nothing worth attacking, mark it not applicable and delete it.",
+      "sections": [
+        {
+          "id": "scope",
+          "heading": "Objectives and scope",
+          "required": true,
+          "questions": ["security_scope"],
+          "done_when": "What is protected, and from whom, is stated and confirmed."
+        },
+        {
+          "id": "access",
+          "heading": "Identity and access",
+          "required": true,
+          "questions": ["access_model"],
+          "uses": ["user_types"],
+          "done_when": "Sign-in and permission rules are described and confirmed, or the section says there are no accounts."
+        },
+        {
+          "id": "data-protection",
+          "heading": "Data protection",
+          "required": true,
+          "questions": ["sensitive_data"],
+          "done_when": "Kinds of sensitive data, where they live and how they are protected are described. No real secrets."
+        },
+        {
+          "id": "input",
+          "heading": "Input and interface security",
+          "required": false,
+          "questions": ["interface_threats"],
+          "done_when": "Trust boundaries and the main threats at each are listed."
+        },
+        {
+          "id": "dependencies",
+          "heading": "Dependencies and supply chain",
+          "required": false,
+          "questions": ["dependency_policy"],
+          "done_when": "How dependencies are chosen, updated and scanned is stated."
+        },
+        {
+          "id": "logging",
+          "heading": "Logging and incident response",
+          "required": false,
+          "questions": ["security_logging"],
+          "done_when": "Security events to log and who responds are named."
+        },
+        {
+          "id": "verification",
+          "heading": "Verification",
+          "required": false,
+          "questions": ["security_verification"],
+          "done_when": "How security is checked is listed."
+        }
+      ]
+    },
+    "docs/engineering/TEST_STRATEGY.md": {
+      "purpose": "What needs testing, at which layers, with which data, and what must pass before release. Tools follow the strategy.",
+      "stage": "as-needed",
+      "priority": 60,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "If a profile requires it, skipping leaves it incomplete; fill it in when the first tests are written.",
+      "sections": [
+        {
+          "id": "quality",
+          "heading": "Quality objectives",
+          "required": true,
+          "questions": ["quality_objectives"],
+          "done_when": "The areas needing the most confidence are named."
+        },
+        {
+          "id": "layers",
+          "heading": "Test layers",
+          "required": true,
+          "questions": ["test_layers"],
+          "done_when": "What each layer covers is stated."
+        },
+        {
+          "id": "critical",
+          "heading": "Critical scenarios",
+          "required": true,
+          "questions": ["critical_scenarios"],
+          "uses": ["key_journeys"],
+          "done_when": "Journeys and failure cases that must always be tested are listed, with requirement IDs."
+        },
+        {
+          "id": "data",
+          "heading": "Test data and environments",
+          "required": false,
+          "questions": ["test_data"],
+          "done_when": "Test data sources are described, and sensitive data is kept out of tests."
+        },
+        {
+          "id": "gates",
+          "heading": "Release gates",
+          "required": false,
+          "questions": ["release_gates"],
+          "done_when": "Checks that block a release are listed."
+        }
+      ]
+    },
+    "docs/architecture/REPOSITORY_STRUCTURE.md": {
+      "purpose": "How the repository is laid out and why: module boundaries, ownership and dependency direction.",
+      "stage": "as-needed",
+      "priority": 80,
+      "skip": "Mark not applicable and delete it once the layout is settled and obvious.",
+      "sections": [
+        {
+          "id": "single",
+          "heading": "Single application",
+          "required": false,
+          "questions": ["repository_layout"],
+          "applies_when": "Everything is built and deployed together.",
+          "done_when": "The chosen layout is kept and the alternatives are removed."
+        },
+        {
+          "id": "monorepo",
+          "heading": "Modular monorepo",
+          "required": false,
+          "applies_when": "Several apps or packages share one repository.",
+          "uses": ["repository_layout"],
+          "done_when": "Apps and packages are named with their owners and dependency direction."
+        },
+        {
+          "id": "multi-repo",
+          "heading": "Multiple repositories",
+          "required": false,
+          "applies_when": "Parts are owned or released separately.",
+          "uses": ["repository_layout"],
+          "done_when": "Each repository is named with its owner and what it contains."
+        }
+      ]
+    },
+    "docs/architecture/system-design/01-system-overview.md": {
+      "purpose": "What the system is and where its boundaries lie: actors, capabilities, scope and external systems.",
+      "stage": "design",
+      "priority": 21,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "Required by some profiles; otherwise keep the summary in SYSTEM_DESIGN.md instead.",
+      "sections": [
+        {
+          "id": "purpose",
+          "heading": "Purpose",
+          "required": true,
+          "uses": ["what_building", "problem"],
+          "done_when": "Summarises the purpose, referring to the PRD."
+        },
+        {
+          "id": "actors",
+          "heading": "Actors and stakeholders",
+          "required": true,
+          "uses": ["primary_users", "user_types"],
+          "done_when": "Every person or system that acts on the system is named."
+        },
+        {
+          "id": "capabilities",
+          "heading": "Core capabilities",
+          "required": false,
+          "uses": ["capabilities"],
+          "done_when": "Links to the CAP- IDs in the PRD rather than restating them."
+        },
+        {
+          "id": "boundaries",
+          "heading": "Scope and boundaries",
+          "required": true,
+          "uses": ["scope_in", "scope_out"],
+          "done_when": "What is inside and outside the system is clear."
+        },
+        {
+          "id": "external",
+          "heading": "External systems and dependencies",
+          "required": false,
+          "uses": ["external_systems"],
+          "done_when": "Each outside system is listed with what it is used for."
+        }
+      ]
+    },
+    "docs/architecture/system-design/02-domain-and-state-model.md": {
+      "purpose": "The things the system keeps track of, how they relate, who owns them and how their state changes.",
+      "stage": "design",
+      "priority": 23,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "Required by some profiles; otherwise mark not applicable when the system keeps no data of its own.",
+      "sections": [
+        {
+          "id": "concepts",
+          "heading": "Domain concepts",
+          "required": true,
+          "questions": ["domain_concepts"],
+          "done_when": "The main concepts are defined in plain language, using names that match the code."
+        },
+        {
+          "id": "state",
+          "heading": "State model",
+          "required": false,
+          "questions": ["state_lifecycle"],
+          "done_when": "States and what moves things between them are listed."
+        },
+        {
+          "id": "persistence",
+          "heading": "Data structures and persistence",
+          "required": false,
+          "questions": ["data_ownership"],
+          "done_when": "Who owns each kind of data and how long it is kept is stated."
+        }
+      ]
+    },
+    "docs/architecture/system-design/03-behaviour-and-business-rules.md": {
+      "purpose": "What the system must do and the rules it must preserve: operations, triggers, business rules and invariants.",
+      "stage": "design",
+      "priority": 24,
+      "depends_on": ["docs/product/SPEC.md"],
+      "skip": "Required by some profiles; otherwise keep global rules in SPEC.md §7.",
+      "sections": [
+        {
+          "id": "operations",
+          "heading": "Use cases and operations",
+          "required": true,
+          "uses": ["capabilities", "key_journeys"],
+          "done_when": "The important operations are listed with the requirements they implement."
+        },
+        {
+          "id": "triggers",
+          "heading": "Triggers and events",
+          "required": false,
+          "questions": ["triggers"],
+          "done_when": "What starts each important operation is stated."
+        },
+        {
+          "id": "rules",
+          "heading": "Business rules",
+          "required": false,
+          "uses": ["business_rules"],
+          "done_when": "Rules are listed with IDs, referring to SPEC.md where they are global."
+        },
+        {
+          "id": "invariants",
+          "heading": "Invariants",
+          "required": true,
+          "questions": ["invariants"],
+          "done_when": "Rules that must always hold are listed and confirmed, or the section says there are none."
+        },
+        {
+          "id": "validation",
+          "heading": "Validation and constraints",
+          "required": false,
+          "questions": ["validation_rules"],
+          "done_when": "Input rules and pre- and postconditions of key operations are stated."
+        }
+      ]
+    },
+    "docs/architecture/system-design/04-architecture-and-interfaces.md": {
+      "purpose": "The components, their responsibilities and how they communicate with each other and outside systems.",
+      "stage": "design",
+      "priority": 25,
+      "depends_on": ["docs/architecture/SYSTEM_DESIGN.md"],
+      "skip": "Required by some profiles; otherwise describe the structure in SYSTEM_DESIGN.md.",
+      "sections": [
+        {
+          "id": "approach",
+          "heading": "Architectural approach",
+          "required": true,
+          "uses": ["architecture_known"],
+          "done_when": "The overall approach and its reasons are stated."
+        },
+        {
+          "id": "components",
+          "heading": "Components and responsibilities",
+          "required": true,
+          "questions": ["components"],
+          "done_when": "Each component has one stated responsibility, and the developer confirmed the split."
+        },
+        {
+          "id": "communication",
+          "heading": "Communication",
+          "required": false,
+          "questions": ["communication"],
+          "done_when": "How components and outside systems talk is described."
+        },
+        {
+          "id": "integrations",
+          "heading": "Integrations",
+          "required": false,
+          "uses": ["external_systems"],
+          "done_when": "Each integration has its direction, data and failure behaviour."
+        },
+        {
+          "id": "technology",
+          "heading": "Technology choices",
+          "required": false,
+          "questions": ["technology_choices"],
+          "done_when": "Chosen technologies are listed with reasons; significant ones have ADRs."
+        }
+      ]
+    },
+    "docs/architecture/system-design/05-execution-and-resilience.md": {
+      "purpose": "How the system runs and recovers: concurrency, background work, failures, retries and recovery.",
+      "stage": "as-needed",
+      "priority": 50,
+      "depends_on": ["docs/architecture/system-design/04-architecture-and-interfaces.md"],
+      "skip": "Mark not applicable when nothing runs concurrently, in the background or can fail part-way.",
+      "sections": [
+        {
+          "id": "runtime",
+          "heading": "Runtime model",
+          "required": true,
+          "questions": ["runtime_model"],
+          "done_when": "What runs where, and in what order, is described."
+        },
+        {
+          "id": "failures",
+          "heading": "Failure scenarios",
+          "required": true,
+          "questions": ["failure_handling"],
+          "done_when": "The likely failures and the system's response to each are listed."
+        },
+        {
+          "id": "recovery",
+          "heading": "Recovery",
+          "required": false,
+          "questions": ["recovery"],
+          "done_when": "Acceptable data loss and downtime are stated and confirmed."
+        }
+      ]
+    },
+    "docs/architecture/system-design/06-operations-and-scalability.md": {
+      "purpose": "How the system is deployed, observed and scaled, and who operates it.",
+      "stage": "as-needed",
+      "priority": 55,
+      "depends_on": ["docs/architecture/system-design/04-architecture-and-interfaces.md"],
+      "skip": "Mark not applicable when the team runs no services of its own.",
+      "sections": [
+        {
+          "id": "operating-model",
+          "heading": "Operating model",
+          "required": true,
+          "questions": ["operating_model"],
+          "done_when": "Who deploys and runs the system, and where, is stated."
+        },
+        {
+          "id": "observability",
+          "heading": "Observability",
+          "required": true,
+          "questions": ["observability"],
+          "done_when": "Logs, metrics and alerts that show health are listed."
+        },
+        {
+          "id": "scaling",
+          "heading": "Scaling strategy",
+          "required": false,
+          "questions": ["scaling"],
+          "done_when": "Expected load and how the system copes with growth are stated."
+        }
+      ]
+    },
+    "docs/architecture/system-design/07-ui-and-interaction-mapping.md": {
+      "purpose": "How user actions in the interface map to system operations and state changes.",
+      "stage": "design",
+      "priority": 26,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "Mark not applicable when the product has no interface that changes state.",
+      "sections": [
+        {
+          "id": "surfaces",
+          "heading": "Screen / view inventory",
+          "required": true,
+          "questions": ["ui_surfaces"],
+          "done_when": "Screens are listed with who sees each, using the same names as DESIGN.md."
+        },
+        {
+          "id": "journeys",
+          "heading": "User journeys",
+          "required": false,
+          "uses": ["key_journeys"],
+          "done_when": "Journeys from the PRD are mapped to screens."
+        },
+        {
+          "id": "mapping",
+          "heading": "Interaction-to-system mapping",
+          "required": true,
+          "questions": ["interaction_mapping"],
+          "done_when": "Each state-changing action names the operation it triggers."
+        },
+        {
+          "id": "ui-states",
+          "heading": "UI states",
+          "required": false,
+          "uses": ["ux_states"],
+          "done_when": "Loading, empty and error states are listed per screen, matching DESIGN.md."
+        }
+      ]
+    },
+    "docs/design/DESIGN.md": {
+      "purpose": "How the product looks, feels and is structured: principles, identity, tokens, components, UX and information architecture. Small products need only the start-here sections.",
+      "stage": "design",
+      "priority": 30,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "Mark not applicable when the product has no visual or interactive interface. Don't build a full design system for a small interface: leave the deeper sections unfilled.",
+      "sections": [
+        {
+          "id": "principles",
+          "heading": "2. Product experience principles",
+          "required": true,
+          "questions": ["experience_principles"],
+          "done_when": "A few principles exist to weigh trade-offs against."
+        },
+        {
+          "id": "brand",
+          "heading": "3.1 Brand foundation",
+          "required": true,
+          "questions": ["brand_identity"],
+          "done_when": "Brand attributes are stated, or the section links the existing brand."
+        },
+        {
+          "id": "tokens",
+          "heading": "4.3 Semantic token catalogue",
+          "required": false,
+          "questions": ["design_tokens"],
+          "done_when": "Core colour, type and spacing values are named, or the section says a few values in §3 are enough for now."
+        },
+        {
+          "id": "components",
+          "heading": "5.3 Component inventory",
+          "required": false,
+          "questions": ["component_conventions"],
+          "done_when": "Components in use are listed, with their source."
+        },
+        {
+          "id": "ui-states",
+          "heading": "6.4 UI states (feedback and system status)",
+          "required": true,
+          "questions": ["ux_states"],
+          "done_when": "Loading, empty, error and success behaviour is described."
+        },
+        {
+          "id": "accessibility",
+          "heading": "6.7 Accessibility and responsive behaviour",
+          "required": true,
+          "questions": ["accessibility"],
+          "done_when": "The accessibility standard and supported screen sizes are named."
+        },
+        {
+          "id": "information-architecture",
+          "heading": "7. Information architecture",
+          "required": false,
+          "questions": ["information_architecture"],
+          "done_when": "Main areas and navigation are described."
+        },
+        {
+          "id": "governance",
+          "heading": "1. Governance",
+          "required": false,
+          "questions": ["design_governance"],
+          "done_when": "Design owner and source of truth are named."
+        }
+      ]
+    },
+    "docs/architecture/contracts/README.md": {
+      "purpose": "Written contracts for interfaces with several consumers, outside teams or versioning needs.",
+      "stage": "as-needed",
+      "priority": 65,
+      "depends_on": ["docs/architecture/system-design/04-architecture-and-interfaces.md"],
+      "skip": "Not created until an interface needs a contract; the summary in 04-architecture-and-interfaces.md is enough until then.",
+      "sections": [
+        {
+          "id": "contracts",
+          "heading": "Contracts (Optional)",
+          "required": true,
+          "questions": ["contract_consumers"],
+          "done_when": "Each interface with outside consumers has a contract file linked from 04-architecture-and-interfaces.md."
+        }
+      ]
+    }
+  }
+}

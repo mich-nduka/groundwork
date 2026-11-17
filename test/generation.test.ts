@@ -54,12 +54,14 @@ describe("new projects", () => {
       expect(`${profiles}: ${result.stdout}`).toContain("OK:");
       expect(result.status).toBe(0);
     }
-  });
+  }, 60_000);
 
   test("record Groundwork's identity and every generated file in .groundwork/config.json", () => {
     const project = newProject("application,backend-api");
     const config = readJson(join(project, ".groundwork/config.json"));
-    expect(Object.keys(config).sort()).toEqual(["files", "generatedAt", "groundworkVersion", "schema"]);
+    expect(Object.keys(config).sort()).toEqual(["files", "generatedAt", "groundworkVersion", "schema", "sections"]);
+    // A fingerprint of every section as generated, for every onboarded document.
+    expect(Object.keys(config.sections["PROJECT.md"])).toEqual(["basics", "constraints", "profiles"]);
     expect(config.schema).toBe(1);
     expect(config.groundworkVersion).toBe(readJson(join(TEMPLATE, "scaffold-manifest.json")).version);
     expect(config.files["docs/design/DESIGN.md"]).toBe(sha(join(project, "docs/design/DESIGN.md")));

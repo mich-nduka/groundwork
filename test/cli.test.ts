@@ -180,6 +180,7 @@ describe("interactive creation", () => {
         "Parkmate", // name
         "Parking management platform", // description
         "", // folder: accept ./parkmate
+        ["claude"], // agent files
         "guided",
         false, // ai-systems
         true, // application
@@ -199,8 +200,14 @@ describe("interactive creation", () => {
       expect(review).toContain("+ docs/architecture/system-design/05-execution-and-resilience.md");
       expect(review).toContain("Integration tests (backend-api)");
       expect(review).toContain("docs/backend-api/DATA.md");
+      expect(review).toContain("Agent files:  Claude Code (plus AGENTS.md for every agent)");
       expect(p.shown.at(-1)).toBe("Your project is ready.");
       expect(readFileSync(join(parent, "parkmate/PROJECT.md"), "utf8")).toContain("- Name: Parkmate");
+      expect(readFileSync(join(parent, "parkmate/CLAUDE.md"), "utf8")).toContain("@AGENTS.md");
+      const done = p.shown.find((s) => s.startsWith("Groundwork is ready"))!;
+      expect(done).toContain("Core documents: 6");
+      expect(done).toContain("Profile documents: 10");
+      expect(done).toContain("Open this project with your AI coding agent");
     } finally {
       process.chdir(cwd);
     }
@@ -208,7 +215,7 @@ describe("interactive creation", () => {
 
   test("AI Systems alone is refused and selection is asked again", async () => {
     const parent = tempDir();
-    const p = new Scripted(["ai-demo", "", join(parent, "ai-demo"), "direct", ["ai-systems"], ["ai-systems", "web"], "create"]);
+    const p = new Scripted(["ai-demo", "", join(parent, "ai-demo"), [], "direct", ["ai-systems"], ["ai-systems", "web"], "create"]);
     expect(await create({ yes: false, dryRun: false }, p)).toBe(0);
     expect(p.shown.some((s) => s.startsWith("ERROR") && s.includes("ai-systems profile requires one of"))).toBe(true);
     expect(readFileSync(join(parent, "ai-demo/PROJECT.md"), "utf8")).toContain("- Profiles: ai-systems, web");
@@ -216,7 +223,7 @@ describe("interactive creation", () => {
 
   test("core only, changing profiles from the review, and dependencies shown", async () => {
     const parent = tempDir();
-    const p = new Scripted(["tool", "", join(parent, "tool"), "direct", ["ai-systems", "application"], "change", [], "create"]);
+    const p = new Scripted(["tool", "", join(parent, "tool"), [], "direct", ["ai-systems", "application"], "change", [], "create"]);
     expect(await create({ yes: false, dryRun: false }, p)).toBe(0);
     const reviews = p.shown.filter((s) => s.startsWith("Review"));
     expect(reviews[0]).toContain("AI Systems requires one of Web, Application or Backend/API — satisfied");
@@ -226,7 +233,7 @@ describe("interactive creation", () => {
 
   test("cancelling at the review creates nothing", async () => {
     const parent = tempDir();
-    const p = new Scripted(["x", "", join(parent, "x"), "direct", ["web"], "cancel"]);
+    const p = new Scripted(["x", "", join(parent, "x"), [], "direct", ["web"], "cancel"]);
     expect(await create({ yes: false, dryRun: false }, p)).toBe(1);
     expect(existsSync(join(parent, "x"))).toBe(false);
   });
@@ -239,10 +246,12 @@ describe("interactive creation", () => {
     await expect(create({ yes: false, dryRun: false }, p)).rejects.toThrow("already exists and isn't empty");
   });
 
-  test("a folder argument and --profiles skip those questions", async () => {
+  test("a folder argument, --profiles and --agents skip those questions", async () => {
     const parent = tempDir();
     const p = new Scripted(["", "create"]);
-    expect(await create({ dir: join(parent, "svc"), name: "svc", profiles: ["backend-api"], yes: false, dryRun: false }, p)).toBe(0);
+    const options = { dir: join(parent, "svc"), name: "svc", profiles: ["backend-api"], agents: [], yes: false, dryRun: false };
+    expect(await create(options, p)).toBe(0);
     expect(p.asked).toEqual(["One-line description (optional)", "Create the project?"]);
+    expect(existsSync(join(parent, "svc/CLAUDE.md"))).toBe(false);
   });
 });

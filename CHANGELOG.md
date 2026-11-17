@@ -4,6 +4,30 @@ Notable changes to the Groundwork template itself, not to your project. The form
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-17
+
+Groundwork is now agent-first. An AI coding agent that opens a Groundwork project finds instructions for helping the developer document it, a little at a time, and a record of how far that has got. The developer makes the decisions and sets how much the agent may do alone. Everything still works without an agent. See `MIGRATION.md` for the decisions behind this release.
+
+### Added
+- `GROUNDWORK.md` in every project: the developer's preferences, including the agent's autonomy level (`guided`, `balanced` or `autonomous`), and the canonical agent workflow for first sessions, returning sessions, recording progress, writing documents, optional documents and profiles, work during development, and safety.
+- `profiles/<id>/onboarding.json` for core and the four profiles. Every one of the 26 documents gets a purpose, a stage (`discovery`, `design` or `as-needed`), dependencies, what skipping it means, and sections anchored to its template headings, each with plain-language questions and a `done_when`. 111 questions in all, each asked in exactly one place. Profiles add questions to core documents they use (`extends`), for example Application's offline question.
+- `.groundwork/state.json`: onboarding progress only, never answers. Questions and sections take nine distinct states: unasked, answered, confirmed, assumed, skipped, not_applicable, deferred, unknown and blocked.
+- `scripts/onboarding.py`, the onboarding engine shared by both scripts.
+- New commands in `groundwork.py` and the `groundwork` CLI:
+  - `status`: discovery progress, document progress, what needs confirming or reviewing, open items, and the next questions. `--brief` gives a few lines for a session-start hook.
+  - `docs [path]`: every document in use, or one document's sections and questions.
+  - `mark`: records progress. It refuses to turn a confirmed item into an assumption without `--reopen`, requires a note for assumptions and blocked items, refuses to mark a required document not applicable, and `--repair` rebuilds a damaged state file.
+  - `connect`: adds thin agent adapters. For Claude Code, a `CLAUDE.md` that imports `AGENTS.md`, plus a `SessionStart` hook that runs `status --brief`. For Gemini CLI, `.gemini/settings.json` so it reads `AGENTS.md`. Existing files are never changed.
+- `create-groundwork --agents claude,gemini`, and a wizard step offering the adapters. The completion message counts core, profile and optional documents, and says to open the project with an AI coding agent.
+- `new` records what the developer already said (the description, the chosen profiles), so the agent doesn't ask again.
+- `check_docs.py` validates the onboarding definitions and the state file, and prints a one-line onboarding summary. Unfinished, skipped or deferred documentation never fails validation.
+- Tests for the definitions, the state model, recovery from damaged state, every developer scenario in the specification, and the new commands.
+
+### Changed
+- `AGENTS.md` starts with a short Groundwork section pointing agents to `groundwork status` and `GROUNDWORK.md`. Its workflow asks agents to recommend a new profile and add it only once the developer agrees.
+- `.groundwork/config.json` also records a fingerprint of each document section as generated (`sections`), so a section of template text can be told apart from the project's own writing.
+- `check_docs.py` no longer requires agent and editor settings (`.claude/`, `.gemini/`, `.cursor/`, `.codex/`, `.vscode/`, `.idea/`) or agent instruction files (`CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`) to be listed in `scaffold-manifest.json`.
+
 ## [3.1.0] - 2026-11-17
 
 Groundwork is now an installable command-line tool: `npx create-groundwork`. Nothing changes in the profile model, the documents or the validation rules.

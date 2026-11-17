@@ -39,7 +39,7 @@ Use exactly these values, so tools can check them:
 
 ## Tools
 
-- `scripts/groundwork.py`: chooses profiles (`init`), creates optional documents from their templates (`add`), shows what each profile offers (`list`) and the project's Groundwork configuration (`config`). It never overwrites or deletes a file. The `groundwork` command-line tool runs the same script: `groundwork init`, `groundwork add`, `groundwork profiles`, `groundwork config`, `groundwork validate`.
+- `scripts/groundwork.py`: chooses profiles (`init`), creates optional documents from their templates (`add`), shows what each profile offers (`list`) and the project's Groundwork configuration (`config`), and tracks documentation onboarding (`status`, `docs`, `mark`; see `GROUNDWORK.md`). It never overwrites or deletes a file. The `groundwork` command-line tool runs the same script: `groundwork init`, `groundwork add`, `groundwork profiles`, `groundwork config`, `groundwork status`, `groundwork docs`, `groundwork mark`, `groundwork validate`.
 - `scripts/check_docs.py`: run it after adding, renaming or removing documents, feature specs, requirement IDs, links or profiles. It verifies the manifest, the feature index, internal links, requirement traceability and the profile rules, and prints errors and warnings.
 
 The warnings come in two groups: hygiene (invalid status values, unserved capabilities, documents from inactive profiles, missing profile checks) and coverage (a requirement no design doc, plan or test references). Each group fails only under its flag:

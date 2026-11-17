@@ -50,6 +50,7 @@ Several profiles can be active at once. These rules keep that simple and predict
 
 - **Errors:** an invalid manifest, a document with two owners, a profile listing another profile's document, an unknown or duplicated profile in `PROJECT.md`, a missing dependency, an incompatible pair, or a missing required document.
 - **Hygiene warnings** (fail under `--strict`): a document from a profile that isn't active, and a profile check with no row in the `AGENTS.md` tooling table.
+- **Onboarding errors:** an invalid `onboarding.json` (see below) or an unreadable `.groundwork/state.json`. Unfinished onboarding is never an error.
 
 Templates under `profiles/<id>/templates/` aren't checked for IDs or links where they sit; they are checked once copied into place.
 
@@ -85,12 +86,64 @@ Each profile is a folder: `profile.json` (what machines read), `README.md` (stan
 
 Engineering standards are prose, so they live in the profile's README, not in the manifest.
 
+## Onboarding reference
+
+`onboarding.json`, next to `profile.json`, tells an AI agent how to help the developer fill in each document the profile owns: what the document is for, which sections can be completed on their own, the questions to ask for each, and when a section is done. `GROUNDWORK.md` describes how the agent uses it; `groundwork status` and `groundwork docs` show it. It is optional: a profile without one still works, and its documents show as having no onboarding definition.
+
+```json
+{
+  "schema": 1,
+  "questions": {
+    "example_goal": {
+      "ask": "The question, in plain language.",
+      "why": "Optional: why it matters, in a sentence.",
+      "explain": "Optional: a technical term explained before it is asked about.",
+      "examples": ["Optional", "example answers"],
+      "applies_when": "Optional: when the question is relevant at all.",
+      "confirm": true
+    }
+  },
+  "documents": {
+    "docs/example/THING.md": {
+      "purpose": "What the document is responsible for.",
+      "stage": "design",
+      "priority": 40,
+      "depends_on": ["docs/product/PRD.md"],
+      "skip": "What happens if the developer skips it.",
+      "sections": [
+        {
+          "id": "goal",
+          "heading": "Goal",
+          "required": true,
+          "questions": ["example_goal"],
+          "uses": ["problem"],
+          "done_when": "When the section is useful enough to call complete."
+        }
+      ]
+    }
+  },
+  "extends": {
+    "docs/architecture/system-design/04-architecture-and-interfaces.md": { "components": ["example_goal_2"] }
+  }
+}
+```
+
+- `documents` covers only documents this profile owns. Ownership, required or optional, and the `when` condition stay in `profile.json`; nothing is repeated here.
+- `stage` sets when the agent raises a document: `discovery` (the first conversation: `PROJECT.md` and the PRD), `design` (before building the parts it covers), or `as-needed` (when the work reaches it). Within a stage, lower `priority` comes first, and a document waits for the documents it `depends_on`.
+- `heading` anchors a section to a heading in the template (numbering and case are ignored), so progress survives edits elsewhere in the document. Sections are tracked separately: one can be complete while another is skipped or not applicable.
+- Each question is asked in exactly one section, so every answer has one home. `uses` names questions asked elsewhere whose answers a section builds on; the agent refers to them instead of asking again. Question IDs are unique across all profiles.
+- `confirm: true` marks questions whose answers must be confirmed by the developer before they count as settled: scope, security, privacy, money, permissions, architecture and integrations.
+- `extends` adds this profile's questions to sections of core documents the profile lists, while the profile is active. Application, for example, adds its offline question to core's execution and resilience document.
+
+The checker verifies all of this: owned documents only, headings present in the template, each question asked once, `done_when` on every required section, and no dependency cycles.
+
 ## Adding a profile
 
 1. Ask whether the new kind of system needs *different documents or checks*, or just different content in existing ones. Only the first justifies a profile; the second belongs in your project's docs.
 2. Copy an existing profile folder and rename it. Set `id` to the folder name.
 3. Keep only the templates for concerns no core document covers. Use core documents by listing them; never copy them.
 4. Write the README: purpose, where each concern lives, engineering standards, agent instructions, and how it composes with the other profiles.
-5. List the new files in `scaffold-manifest.json` and run `python3 scripts/check_docs.py --strict`.
+5. Optionally, write `onboarding.json` so agents can guide the developer through the new documents (see the onboarding reference above).
+6. List the new files in `scaffold-manifest.json` and run `python3 scripts/check_docs.py --strict`.
 
 No change to core or to the scripts is needed. Delete the folder of any profile you are sure you won't use, and remove its files from `scaffold-manifest.json`; keep `core/`.

@@ -1,6 +1,7 @@
 // Command parsing and dispatch for both executables.
 //   create-groundwork [dir] [options]      → create
 //   groundwork <command> [options]         → create | profiles | init | add | validate | config
+//                                            | status | docs | mark | connect
 
 import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 import {
@@ -33,6 +34,8 @@ Options:
   --description <text>     One-line description
   --profiles <ids>         Comma-separated profile IDs, or "none" for core only
                            (see: groundwork profiles)
+  --agents <ids>           Agent adapters to add: claude, gemini (comma-separated).
+                           AGENTS.md works without one for most agents.
   -y, --yes                Don't ask anything; requires a folder and --profiles
   --dry-run                Show what would be created, write nothing
   -h, --help               Show this help
@@ -42,6 +45,9 @@ Examples:
   npx create-groundwork
   npx create-groundwork parkmate
   npx create-groundwork parkmate --profiles application,backend-api --yes
+
+After creating the project, open it with your AI coding agent: AGENTS.md and
+GROUNDWORK.md guide it through documenting the project with you.
 
 Groundwork never overwrites files: the folder must be new or empty.
 Requires Python 3.9+ (the checks ship inside every project as Python scripts).`;
@@ -58,6 +64,10 @@ Commands:
   add <path>               Create an optional document from its template
   validate                 Check the documentation (scripts/check_docs.py)
   config                   Show this project's Groundwork configuration
+  status                   Where documentation onboarding stands, and what's next
+  docs [path]              Documents in use, or one document's sections and questions
+  mark <target...> <state> Record onboarding progress (used by agents; see GROUNDWORK.md)
+  connect [agent...]       Add instruction files for Claude Code or Gemini CLI
 
 Run "groundwork <command> --help" for details. Every command except create
 and profiles works inside a Groundwork project (or any folder below one).`;
@@ -127,6 +137,71 @@ Usage:
 Shows the project name and profiles (from PROJECT.md), the Groundwork version,
 and which files Groundwork generated that have since changed or been deleted
 (from .groundwork/config.json). Same as: python3 scripts/groundwork.py config`,
+  status: `Show where the project's documentation onboarding stands.
+
+Usage:
+  groundwork status [--brief] [--json]
+
+Shows discovery progress, each document's state, items waiting for
+confirmation or review, skipped and deferred items, and the next questions to
+ask. AI agents run this at the start of a session (see GROUNDWORK.md).
+Same as: python3 scripts/groundwork.py status
+
+Options:
+  --brief        A few lines, for an agent's session-start hook
+  --json         Everything as JSON
+  -h, --help     Show this help`,
+  docs: `List the documents in use, or show one in detail.
+
+Usage:
+  groundwork docs                Every document of core and the active profiles, with its status
+  groundwork docs <path>         One document: purpose, sections, questions and their states
+
+Same as: python3 scripts/groundwork.py docs
+
+Options:
+  --json         Print as JSON
+  -h, --help     Show this help`,
+  mark: `Record onboarding progress in .groundwork/state.json.
+
+Usage:
+  groundwork mark <target> [<target> ...] <state> [--note <text>]
+  groundwork mark --repair
+
+Targets: a question ID (problem), a document (docs/product/PRD.md), a section
+(docs/product/PRD.md#scope), or discovery.
+States: answered, confirmed, assumed, skipped, not_applicable, deferred,
+unknown, blocked, or clear. A whole document takes skipped, deferred,
+not_applicable, unknown or blocked; discovery takes declined or complete.
+
+The state file records progress only; answers belong in the documents. A
+confirmed item changes back only with --reopen. Same as:
+python3 scripts/groundwork.py mark
+
+Options:
+  --note <text>     Why (required for assumed and blocked)
+  --source <who>    developer, repository or agent
+  --reopen          Allow changing something the developer confirmed
+  --repair          Rebuild a damaged state file, keeping every valid entry
+  --dry-run         Show what would change, write nothing
+  --json            Print the result as JSON
+  -h, --help        Show this help`,
+  connect: `Add thin instruction files for agents that don't read AGENTS.md on their own.
+
+Usage:
+  groundwork connect                 Show which agents are connected
+  groundwork connect claude gemini   Add their files
+
+claude: CLAUDE.md (imports AGENTS.md) and a session-start hook in
+.claude/settings.json that shows the onboarding status.
+gemini: .gemini/settings.json, so Gemini CLI reads AGENTS.md.
+Codex, Cursor, GitHub Copilot and most other agents read AGENTS.md already.
+Existing files are never overwritten; you're told what to add instead.
+
+Options:
+  --dry-run      Show what would change, write nothing
+  --json         Print the result as JSON
+  -h, --help     Show this help`,
 };
 
 const HELP_OPTION = { help: { type: "boolean", short: "h" } } as const;
@@ -165,6 +240,7 @@ const CREATE_OPTIONS = {
   name: { type: "string" },
   description: { type: "string" },
   profiles: { type: "string", multiple: true },
+  agents: { type: "string", multiple: true },
   yes: { type: "boolean", short: "y" },
   "dry-run": { type: "boolean" },
   version: { type: "boolean", short: "v" },
@@ -175,7 +251,9 @@ export async function runCreate(args: string[], prompter: Prompter | null = clac
   if (values.help) return print(CREATE_HELP);
   if (values.version) return print(VERSION);
   if (positionals.length > 1) throw new GroundworkError(`Expected one folder, got: ${positionals.join(" ")}`, 2);
-  const profiles = values.profiles?.flatMap((value) => value.split(",")).map((id) => id.trim()).filter(Boolean);
+  const list = (given: string[] | undefined) =>
+    given?.flatMap((value) => value.split(",")).map((id) => id.trim()).filter(Boolean);
+  const profiles = list(values.profiles);
   const interactive = !values.yes && process.stdin.isTTY === true && process.stdout.isTTY === true;
   return create(
     {
@@ -183,6 +261,7 @@ export async function runCreate(args: string[], prompter: Prompter | null = clac
       name: values.name,
       description: values.description,
       profiles,
+      agents: list(values.agents),
       yes: values.yes ?? false,
       dryRun: values["dry-run"] ?? false,
     },
@@ -256,6 +335,47 @@ function engineCommand(command: "init" | "add" | "config", args: string[]): numb
   return runScript(project.root, "groundwork.py", passthrough, "inherit").status;
 }
 
+const ONBOARDING_OPTIONS = {
+  status: { json: { type: "boolean" }, brief: { type: "boolean" } },
+  docs: { json: { type: "boolean" } },
+  mark: {
+    json: { type: "boolean" },
+    "dry-run": { type: "boolean" },
+    note: { type: "string" },
+    source: { type: "string" },
+    reopen: { type: "boolean" },
+    repair: { type: "boolean" },
+  },
+  connect: { json: { type: "boolean" }, "dry-run": { type: "boolean" } },
+} as const;
+
+/** Pass an onboarding command through to the project's own groundwork.py. */
+function onboardingCommand(command: keyof typeof ONBOARDING_OPTIONS, args: string[]): number {
+  const { values, positionals } = parse(args, ONBOARDING_OPTIONS[command]);
+  if (values.help) return print(HELP[command]!);
+  const flags = values as Record<string, string | boolean | undefined>;
+  if (command === "status" && positionals.length) throw new GroundworkError("status takes no arguments.", 2);
+  if (command === "docs" && positionals.length > 1) throw new GroundworkError("Give at most one document path.", 2);
+  if (command === "mark" && !flags.repair && positionals.length < 2) {
+    throw new GroundworkError("Give at least one target and a state, for example: groundwork mark problem answered", 2);
+  }
+  const modifies = (command === "mark" || (command === "connect" && positionals.length > 0)) && !flags["dry-run"];
+  const project = needProject(command, modifies);
+  if (!project.hasOnboarding) {
+    throw new GroundworkError(
+      `This project's scripts/groundwork.py predates Groundwork 3.2, which added ${command}.
+` +
+        "Copy scripts/ and the profiles' onboarding.json files from a newer Groundwork to get it (see MIGRATION.md).",
+    );
+  }
+  const passthrough: string[] = [command, ...positionals];
+  for (const [key, value] of Object.entries(flags)) {
+    if (key === "help" || value === undefined || value === false) continue;
+    passthrough.push(value === true ? `--${key}` : `--${key}=${value}`);
+  }
+  return runScript(project.root, "groundwork.py", passthrough, "inherit").status;
+}
+
 function validateCommand(args: string[]): number {
   const { values, positionals } = parse(args, {
     strict: { type: "boolean" },
@@ -291,6 +411,11 @@ export async function runGroundwork(argv: string[], prompter: Prompter | null = 
       return engineCommand(command, rest);
     case "validate":
       return validateCommand(rest);
+    case "status":
+    case "docs":
+    case "mark":
+    case "connect":
+      return onboardingCommand(command, rest);
     default:
       throw new GroundworkError(`Unknown command '${command}'.\n\n${MAIN_HELP}`, 2);
   }

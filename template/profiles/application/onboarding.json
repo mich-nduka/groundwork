@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "questions": {
+    "release_channels": {
+      "ask": "How does the app reach people: app stores, a desktop installer, enterprise distribution? Are there beta channels?"
+    },
+    "supported_versions": {
+      "ask": "How long must older versions keep working once a new one ships?",
+      "why": "Installed apps stay on people's devices, so the server has to keep talking to old versions.",
+      "confirm": true
+    },
+    "rollout_plan": {
+      "ask": "How are releases rolled out and, if something goes wrong, rolled back?"
+    },
+    "user_created_data": {
+      "ask": "What do users create or change in the app, and what happens to it when they leave?",
+      "why": "Data people create is the heart of an application's state model."
+    },
+    "offline_use": {
+      "ask": "Must the app work without an internet connection? If so, what happens when changes made offline conflict?",
+      "why": "Offline support changes how data is stored, synced and recovered. If the answer is no, the offline parts of the design can be skipped.",
+      "explain": "Syncing is copying changes between the device and the server once a connection returns."
+    },
+    "empty_error_states": {
+      "ask": "What should users see on first use, when there's nothing to show yet, and when an action fails?"
+    }
+  },
+  "documents": {
+    "docs/application/RELEASES.md": {
+      "purpose": "How installed client versions are released, supported, rolled out and rolled back.",
+      "stage": "as-needed",
+      "priority": 70,
+      "skip": "Created only when the app ships as an installed client.",
+      "sections": [
+        { "id": "channels", "heading": "Channels", "required": true, "questions": ["release_channels"], "done_when": "Each distribution channel is listed." },
+        { "id": "supported", "heading": "Supported versions", "required": true, "questions": ["supported_versions"], "done_when": "The support window is stated and confirmed." },
+        { "id": "rollout", "heading": "Rollout", "required": true, "questions": ["rollout_plan"], "done_when": "Rollout steps are described." },
+        { "id": "rollback", "heading": "Rollback", "required": false, "uses": ["rollout_plan"], "done_when": "How to undo a bad release is described." }
+      ]
+    }
+  },
+  "extends": {
+    "docs/architecture/system-design/02-domain-and-state-model.md": { "concepts": ["user_created_data"] },
+    "docs/architecture/system-design/05-execution-and-resilience.md": { "runtime": ["offline_use"] },
+    "docs/architecture/system-design/07-ui-and-interaction-mapping.md": { "surfaces": ["empty_error_states"] }
+  }
+}

@@ -1,5 +1,9 @@
 # Agent Instructions
 
+## Start here: Groundwork
+
+This project uses Groundwork to build and maintain its documentation with the developer. At the start of every session, run `groundwork status` (or `python3 scripts/groundwork.py status`) and follow `GROUNDWORK.md`: it covers how to help the developer document the project, how to record progress, and how much you may do without asking. If discovery hasn't started and the developer hasn't declined it, offer it; never let it block what they asked for.
+
 ## Read before changing
 
 Read in this order — each step narrows the last:
@@ -67,7 +71,7 @@ Active profiles add rows for the checks they need (`scripts/groundwork.py init` 
 3. Plan the smallest safe change. For a non-trivial change, write the plan down first: copy `docs/plans/_template/PLAN.md` into `docs/plans/` and fill it in. Name the requirement IDs the plan covers.
 4. Build it and test it.
 5. Run the relevant checks and read the full diff before calling it done.
-6. Update any docs and ADRs the change affects. If the change gives the system a new kind of responsibility (for example its first AI feature), check whether a profile should be added, and add it with `scripts/groundwork.py init`.
+6. Update any docs and ADRs the change affects, and record documentation progress as `GROUNDWORK.md` describes. If the change gives the system a new kind of responsibility (for example its first AI feature), check whether a profile should be added, recommend it, and add it with `scripts/groundwork.py init` once the developer agrees.
 
 ## Definition of done
 

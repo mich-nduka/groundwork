@@ -7,9 +7,12 @@ What it checks (errors — exit 1):
    disk, so a deleted template file must also be removed from the manifest.
    New files under the user-owned areas `src/`, `tests/`, `config/`,
    `infrastructure/` and `scripts/` (except `scripts/check_docs.py`,
-   `scripts/groundwork.py` and `scripts/README.md`, which belong to the
-   template) do not need to be listed, nor does Groundwork's own
-   `.groundwork/` folder; new files elsewhere do.
+   `scripts/groundwork.py`, `scripts/onboarding.py` and `scripts/README.md`,
+   which belong to the template) do not need to be listed, nor do
+   Groundwork's own `.groundwork/` folder, agent and editor settings folders
+   (`.claude/`, `.gemini/`, `.cursor/`, `.codex/`, `.vscode/`, `.idea/`) and
+   agent instruction files (`CLAUDE.md`, `GEMINI.md`,
+   `.github/copilot-instructions.md`); new files elsewhere do.
 2. The Feature Specification Index in `docs/product/SPEC.md` covers every
    feature specification under `docs/product/specs/` (excluding `_template`),
    and every indexed specification exists.
@@ -40,6 +43,17 @@ What it checks (errors — exit 1):
      their dependencies (`requires`) are active, and no two active
      profiles are declared incompatible;
    - every document required by core or an active profile exists.
+6. Onboarding (only when profiles have `onboarding.json` files; see
+   `GROUNDWORK.md`):
+   - every `profiles/<id>/onboarding.json` matches its schema, defines
+     only documents its profile owns, anchors each section to a heading in
+     the profile's template, asks each question in exactly one section,
+     gives every required section a `done_when`, and has no dependency
+     cycles;
+   - `.groundwork/state.json`, when present, is readable and uses only the
+     known states.
+   Unfinished onboarding is never an error: skipped, deferred or unknown
+   items are reported by `groundwork status`, not here.
 
 What it warns about (printed; only fails the run under the matching flag):
 - hygiene warnings — fail under `--strict`:
@@ -49,7 +63,10 @@ What it warns about (printed; only fails the run under the matching flag):
   - a document owned by a profile that is not active (only once profiles
     are chosen in `PROJECT.md`);
   - a check an active profile declares that has no row in the tooling
-    table in `AGENTS.md`.
+    table in `AGENTS.md`;
+  - an unknown autonomy level in `GROUNDWORK.md`, and entries in
+    `.groundwork/state.json` for documents, sections or questions that no
+    longer exist (`groundwork mark --repair` drops them).
 - coverage warnings — fail under `--strict-coverage`:
   - a requirement defined but never referenced by any document under `docs/`
     or any file under `tests/` or `src/` (placeholder rows in the root
@@ -107,10 +124,12 @@ PLACEHOLDER_TARGETS = {"specs/feature-name/SPEC.md"}
 # required to be in the manifest.
 USER_OWNED_DIRS = ("src", "tests", "config", "infrastructure", "scripts")
 # ...except the template's own scripts.
-TEMPLATE_SCRIPTS = {"scripts/check_docs.py", "scripts/README.md", "scripts/groundwork.py"}
+TEMPLATE_SCRIPTS = {"scripts/check_docs.py", "scripts/README.md", "scripts/groundwork.py", "scripts/onboarding.py"}
 # Groundwork's own per-project records (`.groundwork/config.json`); written
 # by the tools, never listed in the manifest.
-TOOL_DIRS = (".groundwork",)
+TOOL_DIRS = (".groundwork", ".claude", ".gemini", ".cursor", ".codex", ".vscode", ".idea")
+# Instruction files that agents read; the project owns them.
+AGENT_FILES = {"CLAUDE.md", "GEMINI.md", ".github/copilot-instructions.md"}
 
 # {SCOPE}-{TYPE}-NNN, where TYPE is a requirement kind.
 ID_STRICT = re.compile(r"\b[A-Z][A-Z0-9]{1,9}-(?:FR|NFR|BR)-\d{3}\b")
@@ -220,9 +239,10 @@ def is_user_owned(relative: Path) -> bool:
     """True for new files the user may add without updating the manifest."""
     if not relative.parts:
         return False
-    if "/".join(relative.parts) in TEMPLATE_SCRIPTS:
+    joined = "/".join(relative.parts)
+    if joined in TEMPLATE_SCRIPTS:
         return False
-    return relative.parts[0] in USER_OWNED_DIRS or relative.parts[0] in TOOL_DIRS
+    return relative.parts[0] in USER_OWNED_DIRS or relative.parts[0] in TOOL_DIRS or joined in AGENT_FILES
 
 
 def check_manifest() -> list[str]:
@@ -935,6 +955,47 @@ def profile_results() -> tuple[list[str], list[str], str]:
     return errors, warnings, summary
 
 
+def onboarding_results() -> tuple[list[str], list[str], str]:
+    """Onboarding errors, hygiene warnings, and a one-line progress summary.
+
+    Structure only: incomplete, skipped or deferred documentation never
+    fails validation."""
+    if not PROFILES_DIR.is_dir() or not any(PROFILES_DIR.glob("*/onboarding.json")):
+        return [], [], ""
+    # Imported here, not at the top: onboarding imports this module. Python's
+    # isolated mode (-I) leaves the script's folder off the path, so add it.
+    sys.dont_write_bytecode = True
+    here = str(Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import onboarding
+
+    profiles, _ = load_profiles()
+    owners, _ = document_owners(profiles)
+    registry, errors = onboarding.load_definitions(profiles, owners)
+    state, problems = onboarding.read_state()
+    errors += [f"{p} — run python3 scripts/groundwork.py mark --repair" for p in problems]
+    warnings: list[str] = []
+    if state is not None:
+        state_errors, stale = onboarding.validate_state(state, registry, owners)
+        errors += state_errors
+        warnings += stale
+        if state_errors:
+            state, _ = onboarding.repair_state(state, registry, owners)
+    autonomy_problem = onboarding.read_autonomy()[1]
+    if autonomy_problem:
+        warnings.append(autonomy_problem)
+    report = onboarding.build_status(profiles, owners, registry, state, declared_profiles())
+    tracked = [d for d in report["documents"] if d["status"] != "available"]
+    complete = sum(1 for d in tracked if d["status"] == "complete")
+    discovery = report["discovery"].replace("-", " ")
+    summary = (
+        f"Onboarding: discovery {discovery}; {complete} of {len(tracked)} documents complete"
+        " (python3 scripts/groundwork.py status for details)"
+    )
+    return errors, warnings, summary
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate Groundwork documentation consistency.")
     parser.add_argument(
@@ -951,6 +1012,9 @@ def main() -> int:
 
     row_owner, real_rows, capability_owner, definition_problems = collect_definitions()
     profile_errors, profile_warnings, profile_summary = profile_results()
+    onboarding_errors, onboarding_warnings, onboarding_summary = onboarding_results()
+    profile_errors += onboarding_errors
+    profile_warnings += onboarding_warnings
     errors = (
         check_manifest()
         + check_feature_index()
@@ -975,6 +1039,8 @@ def main() -> int:
 
     if errors or (args.strict and hygiene_warnings) or (args.strict_coverage and coverage_warnings):
         return 1
+    if onboarding_summary:
+        print(onboarding_summary)
     checked = "manifest, feature index, requirement IDs and links are consistent"
     if profile_summary:
         checked = f"manifest, feature index, requirement IDs, links and profiles are consistent ({profile_summary})"

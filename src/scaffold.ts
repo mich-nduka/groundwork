@@ -25,6 +25,8 @@ export interface CreateOptions {
   description?: string;
   /** Profile IDs; ["none"] or [] means core only. Undefined means "not given". */
   profiles?: string[];
+  /** Agent adapters (claude, gemini). Undefined means "not given": the wizard asks. */
+  agents?: string[];
   yes: boolean;
   dryRun: boolean;
 }
@@ -34,7 +36,13 @@ interface Answers {
   description: string;
   destination: string;
   profiles: string[];
+  agents: string[];
 }
+
+export const AGENTS: { id: string; name: string; hint: string }[] = [
+  { id: "claude", name: "Claude Code", hint: "CLAUDE.md plus a hook that shows the documentation status at session start" },
+  { id: "gemini", name: "Gemini CLI", hint: "a setting so it reads AGENTS.md" },
+];
 
 export function slug(name: string): string {
   return (
@@ -64,6 +72,7 @@ function generate(answers: Answers, dryRun: boolean): NewResult {
     `--name=${answers.name}`,
     `--description=${answers.description}`,
     ...(dryRun ? ["--dry-run"] : []),
+    ...(answers.agents.length ? ["--agents", ...answers.agents] : []),
     "--profiles",
     ...ids,
   ]);
@@ -117,20 +126,31 @@ function reviewText(answers: Answers, plan: NewResult, all: Profile[]): string {
   if (init.optional.length) {
     lines.push("", "Optional documents, for later (groundwork add <path>):", ...init.optional.map((o) => `  - ${o.path}`));
   }
+  lines.push("", `Agent files:  ${agentText(answers.agents)}`);
   return lines.join("\n");
 }
 
+function agentText(ids: string[]): string {
+  if (!ids.length) return "none — AGENTS.md works with Codex, Cursor, Copilot and most agents";
+  return ids.map((id) => AGENTS.find((a) => a.id === id)?.name ?? id).join(", ") + " (plus AGENTS.md for every agent)";
+}
+
 function completionText(answers: Answers, result: NewResult, all: Profile[], validated: boolean, check: string): string {
-  const created = result.init.documents.filter((d) => d.action === "create").map((d) => d.path);
   const names = profileNames(result.init.profiles, all);
+  const documents = result.init.documents;
+  const core = documents.filter((d) => d.requiredBy.includes(CORE)).length;
+  const profile = documents.length - core;
   const lines = [
     `Project: ${answers.name}`,
     "",
-    "Active profiles:",
+    "Selected profiles:",
     ...(names.length ? names.map((n) => `  - ${n}`) : ["  - none (Groundwork Core only)"]),
     "",
-    `Generated: ${result.files} files from Groundwork (core documents, profiles, scripts)${created.length ? ", plus:" : ""}`,
-    ...created.map((path) => `  + ${path}`),
+    "Documentation:",
+    `  - Core documents: ${core}`,
+    ...(profile ? [`  - Profile documents: ${profile}`] : []),
+    ...(result.init.optional.length ? [`  - Optional documents: ${result.init.optional.length} available when needed`] : []),
+    `  - Agent files: ${agentText(result.agents ?? answers.agents)}`,
     "",
     "Validation:",
   ];
@@ -138,17 +158,23 @@ function completionText(answers: Answers, result: NewResult, all: Profile[], val
     lines.push(
       `  ${green("✓")} Profile selection, dependencies and document ownership`,
       `  ${green("✓")} Required documents present`,
-      `  ${green("✓")} Manifest, requirement IDs and links`,
+      `  ${green("✓")} Manifest, requirement IDs, links and onboarding definitions`,
     );
   } else {
     lines.push(`  ${red("✗")} The documentation check reported problems:`, ...check.trim().split("\n").map((l) => `    ${l}`));
   }
   lines.push(
     "",
-    "Next steps:",
+    "Next step:",
     `  cd ${display(result.destination)}`,
-    "  groundwork validate          (or: python3 scripts/check_docs.py)",
-    "  Fill in PROJECT.md, then docs/product/PRD.md, and read profiles/README.md.",
+    "  Open this project with your AI coding agent. Groundwork guides the agent",
+    "  through understanding your project and preparing the documentation it needs.",
+    "",
+    "You can also run:",
+    "  groundwork status      where the documentation stands",
+    "  groundwork docs        the documents in use",
+    "  groundwork profiles    what each profile adds",
+    "  groundwork validate    check the documentation",
   );
   return lines.join("\n");
 }
@@ -226,13 +252,23 @@ async function wizard(options: CreateOptions, p: Prompter, all: Profile[]): Prom
     p.error(problem);
     return null;
   }
+  const agents =
+    options.agents ??
+    (options.yes
+      ? []
+      : await p.multiselect({
+          message:
+            "Add files for a specific AI coding agent? (optional: AGENTS.md already works with Codex, Cursor, Copilot and most others)",
+          options: AGENTS.map((a) => ({ value: a.id, label: a.name, hint: a.hint })),
+          initialValues: [],
+        }));
 
   let profiles = options.profiles ? options.profiles.filter((id) => id !== "none") : [];
   let skipSelection = options.profiles !== undefined;
   for (;;) {
     if (!skipSelection) profiles = await chooseProfiles(p, all, profiles);
     skipSelection = false;
-    const answers: Answers = { name: name.trim(), description: description.trim(), destination, profiles };
+    const answers: Answers = { name: name.trim(), description: description.trim(), destination, profiles, agents };
     const plan = generate(answers, true);
     if (!plan.ok) {
       // Selection problems (unknown IDs, dependencies, conflicts) go back to
@@ -284,7 +320,7 @@ export async function create(options: CreateOptions, prompter: Prompter | null):
     }
     spin.stop("Project created.");
     const done = finish(answers, result, all);
-    prompter.note(done.text, "Groundwork");
+    prompter.note(done.text, "Groundwork is ready");
     prompter.outro(done.ok ? "Your project is ready." : "Created, but the documentation check found problems.");
     return done.ok ? 0 : 1;
   }
@@ -306,6 +342,7 @@ export async function create(options: CreateOptions, prompter: Prompter | null):
     description: options.description ?? "",
     destination: resolve(options.dir ?? slug(name)),
     profiles: options.profiles.filter((id) => id !== "none"),
+    agents: options.agents ?? [],
   };
   const result = generate(answers, options.dryRun);
   if (!result.ok) {
@@ -319,7 +356,7 @@ export async function create(options: CreateOptions, prompter: Prompter | null):
     return 0;
   }
   const done = finish(answers, result, all);
-  console.log(`${bold(`Groundwork ${VERSION}`)}\n`);
+  console.log(`${bold(`Groundwork ${VERSION} is ready.`)}\n`);
   console.log(done.text);
   console.log(`\n${done.ok ? "Your project is ready." : "Created, but the documentation check found problems."}`);
   return done.ok ? 0 : 1;

@@ -61,3 +61,28 @@ To get the 3.1 additions in a 3.0 project, copy `scripts/groundwork.py` and `scr
 4. **Active profiles stay in `PROJECT.md` only.** `.groundwork/config.json` records what only a tool needs: the version, the generation date, and the checksums of generated files. Keeping the profiles in two places would let them drift apart. The project name stays in `PROJECT.md` for the same reason.
 5. **No `update` command yet.** The checksums are what a future `update` needs to leave customised files alone. A merge engine would come too early.
 6. **`.gitignore` ships as `_gitignore`.** npm never packs files named `.gitignore`, so packing adds a temporary `_gitignore` copy, and `new` restores the real name.
+
+## Groundwork 3.2: agent-first documentation
+
+3.2 lets an AI coding agent do the documentation work with the developer. The agent finds out what the project needs, asks a little at a time, writes the documents, and records progress so the next session carries on. The developer gives direction, makes the decisions, and controls the process through `GROUNDWORK.md`. Profiles, documents and the existing checks are unchanged. The CLI and the Python scripts still work without any agent.
+
+**Existing projects keep working.** In a 3.0 or 3.1 project, `groundwork init`, `add`, `config` and `validate` behave as before. `status`, `docs`, `mark` and `connect` explain that the project predates 3.2. To upgrade a project:
+
+1. Copy `scripts/groundwork.py`, `scripts/check_docs.py` and `scripts/onboarding.py` from the package's `template/scripts/`.
+2. Copy `GROUNDWORK.md` and each `profiles/<id>/onboarding.json` from `template/`, and add the Groundwork section from the top of `template/AGENTS.md` to your `AGENTS.md`.
+3. List the new files in `scaffold-manifest.json`, then run `python3 scripts/check_docs.py`.
+
+`status` works at once. In a 3.1 project, running `groundwork init` with your current profiles also fingerprints every document you haven't changed since it was generated. In a 3.0 project there are no checksums, so for documents shipped in place (such as the PRD), `status` can't tell template text from your own writing. It relies on what `mark` records instead.
+
+### Decisions
+
+1. **One engine, extended.** Onboarding lives in a third standard-library script, `scripts/onboarding.py`, used by `groundwork.py` and `check_docs.py`. The TypeScript CLI passes the new commands through, as it does the others.
+2. **Definitions sit beside the manifests, not inside them.** `profile.json` stays exactly as it was and remains the only source for ownership, required or optional, and `when` conditions. `onboarding.json` adds only what onboarding needs. A profile without one still validates, so projects' own profiles keep working.
+3. **Sections are anchored to headings.** Sections are identified by their template heading (numbering and case ignored), not by line numbers, so progress survives edits elsewhere in the document.
+4. **One home per answer.** Each question is asked in exactly one section, and the checker enforces it. Sections that build on answers from elsewhere name them under `uses`, and the agent refers to them instead of asking again.
+5. **Progress, not facts.** `.groundwork/state.json` holds states and short notes, never answers. The section fingerprints that tell template text from real writing live in `config.json` with the file checksums, since both record what Groundwork generated. If the state file is lost or damaged, nothing about the documents is lost: `status` still sees what has been written, and `mark --repair` keeps every valid entry and a copy of the old file.
+6. **Autonomy lives in `GROUNDWORK.md`.** The `- Autonomy:` line follows the same pattern as `- Profiles:` in `PROJECT.md`: one human-editable source the engine reads. `config.json` stays tool-owned.
+7. **`AGENTS.md` is the entry point; adapters are optional and thin.** Codex, Cursor, GitHub Copilot, Windsurf, Amp and others read `AGENTS.md` directly. Claude Code reads `CLAUDE.md`, so its adapter imports `AGENTS.md` and adds a `SessionStart` hook that runs `status --brief`. That is the one integration that puts the documentation state in front of the agent at session start. Gemini CLI gets a setting so it reads `AGENTS.md`. No agent starts a conversation just because a repository exists, so Groundwork claims no such thing: the guarantee is that any agent reading the project instructions finds and follows the workflow.
+8. **Progressive by stage.** Discovery covers only `PROJECT.md` and the PRD. Design-stage documents follow once discovery is complete or declined. Everything else waits until the work reaches it. A developer who declines discovery is never asked again; the agent raises gaps only when they affect the task.
+9. **Validation stays structural.** Invalid definitions and unreadable state are errors. Incomplete, skipped or deferred documentation never is.
+10. **No new profiles, and no fewer documents created.** The optional core documents that 3.x ships in place (`SECURITY.md`, `TEST_STRATEGY.md`, `REPOSITORY_STRUCTURE.md`) still ship in place, for compatibility. `mark PATH not_applicable` records that one doesn't apply.
