@@ -1,0 +1,2 @@
+# The package contents are set by "files" in package.json.
+# This file exists so npm does not apply .gitignore (which excludes dist/).

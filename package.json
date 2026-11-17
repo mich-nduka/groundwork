@@ -1,0 +1,50 @@
+{
+  "name": "create-groundwork",
+  "version": "3.1.0",
+  "description": "Start a software project with the minimum sufficient engineering documentation, adapted to what you're building through composable profiles.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mich-nduka/groundwork.git"
+  },
+  "homepage": "https://github.com/mich-nduka/groundwork#readme",
+  "bugs": {
+    "url": "https://github.com/mich-nduka/groundwork/issues"
+  },
+  "type": "module",
+  "bin": {
+    "create-groundwork": "dist/create.js",
+    "groundwork": "dist/groundwork.js"
+  },
+  "files": [
+    "dist",
+    "template",
+    "CHANGELOG.md",
+    "MIGRATION.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json && chmod +x dist/create.js dist/groundwork.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun run build && bun test",
+    "prepack": "bun run build && node scripts/pack-assets.mjs add",
+    "postpack": "node scripts/pack-assets.mjs remove"
+  },
+  "keywords": [
+    "scaffold",
+    "create",
+    "documentation",
+    "requirements",
+    "architecture",
+    "ai-agents"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@clack/prompts": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  }
+}

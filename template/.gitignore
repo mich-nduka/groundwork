@@ -1,0 +1,26 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Editor and IDE files
+.idea/
+.vscode/
+*.swp
+*~
+
+# Environment variables and secrets — example files are safe to commit
+.env*
+!.env.example
+!.env.sample
+
+# Logs
+*.log
+logs/
+
+# Build output and dependencies
+build/
+dist/
+out/
+target/
+node_modules/
+__pycache__/

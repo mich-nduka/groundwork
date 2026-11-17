@@ -1,0 +1,23 @@
+name: Docs check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      # --strict fails on errors and hygiene warnings (invalid status
+      # values, unserved capabilities, documents from inactive profiles,
+      # profile checks missing from AGENTS.md). It does not fail on coverage
+      # warnings (unreferenced requirements). --strict-coverage does not
+      # include --strict: once every requirement is referenced somewhere,
+      # ADD the flag so coverage warnings also fail:
+      #   python3 scripts/check_docs.py --strict --strict-coverage
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check_docs.py --strict
