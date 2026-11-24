@@ -15,22 +15,43 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Oldest supported versions. Python 3.9 is what macOS ships, and is
-          # no longer offered on the newest Ubuntu runners.
-          - { os: ubuntu-24.04, node: 22, python: "3.9" }
-          - { os: macos-latest, node: 22, python: "3.9" }
-          # Current versions.
-          - { os: ubuntu-latest, node: 24, python: "3.13" }
+          # The oldest Node.js the CLI supports, and the current one.
+          - { os: ubuntu-latest, node: 22 }
+          - { os: macos-latest, node: 22 }
+          - { os: ubuntu-latest, node: 24 }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python }}
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
-      - run: python3 template/scripts/check_docs.py --strict --strict-coverage
+      - run: node template/.groundwork/scripts/groundwork.mjs validate --strict --strict-coverage
       - run: bun run test
+
+  # Every project carries its own engine, which promises Node.js 18 or newer.
+  engine-node-18:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 18
+      - run: node template/.groundwork/scripts/groundwork.mjs validate --strict --strict-coverage
+      - name: Create a project and run each command
+        working-directory: ${{ runner.temp }}
+        run: |
+          node "$GITHUB_WORKSPACE/template/.groundwork/scripts/groundwork.mjs" new app --profiles application backend-api ai-systems
+          cd app
+          gw() { node .groundwork/scripts/groundwork.mjs "$@"; }
+          gw status
+          gw docs
+          gw add docs/architecture/SYSTEM_DESIGN.md
+          gw mark problem answered
+          gw mark offline_use deferred --note "later"
+          gw init application backend-api ai-systems content-site
+          gw profiles
+          gw config
+          gw connect claude
+          gw validate --strict --strict-coverage

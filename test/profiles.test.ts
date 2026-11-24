@@ -2,21 +2,21 @@
 // composition and determinism — exercised through the real commands.
 
 import { describe, expect, test } from "bun:test";
-import { copyFileSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { editJson, groundwork, newProject, python, readJson, snapshot, TEMPLATE, tempDir, templateCopy } from "./helpers";
+import { editJson, groundwork, newProject, engine, readJson, snapshot, TEMPLATE, tempDir, templateCopy } from "./helpers";
 
 describe("manifests", () => {
   test("the four profiles and core load from their manifests", () => {
     const result = groundwork(["profiles", "--json"], TEMPLATE);
     expect(result.status).toBe(0);
     const ids = JSON.parse(result.stdout).map((p: { id: string }) => p.id);
-    expect(ids).toEqual(["core", "ai-systems", "application", "backend-api", "web"]);
+    expect(ids).toEqual(["core", "ai-systems", "application", "backend-api", "content-site"]);
   });
 
   test("profile details come from profile.json", () => {
-    const manifest = readJson(join(TEMPLATE, "profiles/web/profile.json"));
-    const result = groundwork(["profiles", "web"], TEMPLATE);
+    const manifest = readJson(join(TEMPLATE, ".groundwork/profiles/content-site/profile.json"));
+    const result = groundwork(["profiles", "content-site"], TEMPLATE);
     expect(result.status).toBe(0);
     for (const doc of manifest.documents) expect(result.stdout).toContain(doc.path);
     for (const check of manifest.checks) expect(result.stdout).toContain(check.name);
@@ -31,11 +31,11 @@ describe("manifests", () => {
 
   test("schema errors are reported, not ignored", () => {
     const template = templateCopy();
-    editJson(join(template, "profiles/web/profile.json"), (d) => {
+    editJson(join(template, ".groundwork/profiles/application/profile.json"), (d) => {
       d.colour = "red";
-      delete d.documents[4].when;
+      delete d.documents.find((doc: any) => !doc.required).when;
     });
-    const result = python(template, "check_docs.py", []);
+    const result = engine(template, ["validate"]);
     expect(result.status).toBe(1);
     expect(result.stdout).toContain("unknown field 'colour'");
     expect(result.stdout).toContain("an optional document needs a 'when'");
@@ -43,14 +43,14 @@ describe("manifests", () => {
 
   test("a second owner for a document is rejected", () => {
     const template = templateCopy();
-    mkdirSync(join(template, "profiles/web/templates/docs/design"), { recursive: true });
+    mkdirSync(join(template, ".groundwork/profiles/content-site/templates/docs/design"), { recursive: true });
     copyFileSync(
-      join(template, "profiles/core/templates/docs/design/DESIGN.md"),
-      join(template, "profiles/web/templates/docs/design/DESIGN.md"),
+      join(template, ".groundwork/profiles/core/templates/docs/design/DESIGN.md"),
+      join(template, ".groundwork/profiles/content-site/templates/docs/design/DESIGN.md"),
     );
-    const result = python(template, "groundwork.py", ["list"]);
+    const result = engine(template, ["list"]);
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("docs/design/DESIGN.md: owned by both the core and web profiles");
+    expect(result.stdout).toContain("docs/design/DESIGN.md: owned by both the core and content-site profiles");
   });
 });
 
@@ -59,29 +59,44 @@ describe("selection", () => {
     const parent = tempDir();
     const result = groundwork(["create", "x", "--profiles", "ai-systems", "--yes"], parent);
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("ai-systems profile requires one of web, application, backend-api");
+    expect(result.stderr).toContain("ai-systems profile requires one of application, backend-api, content-site");
     expect(readdirSync(parent)).toEqual([]);
   });
 
   test("unknown and duplicate profiles are rejected", () => {
     const project = newProject("none");
-    const result = groundwork(["init", "web", "web", "mobile"], project);
+    const result = groundwork(["init", "content-site", "content-site", "mobile"], project);
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("profile 'web' is listed twice");
+    expect(result.stdout).toContain("profile 'content-site' is listed twice");
     expect(result.stdout).toContain("unknown profile 'mobile'");
+  });
+
+  test("the old web ID still selects the content-site profile", () => {
+    const project = newProject("web");
+    const projectFile = join(project, "PROJECT.md");
+    expect(readFileSync(projectFile, "utf8")).toContain("- Profiles: content-site");
+    expect(engine(project, ["init", "web", "ai-systems"]).status).toBe(0);
+    expect(readFileSync(projectFile, "utf8")).toContain("- Profiles: ai-systems, content-site");
+    // A PROJECT.md that still says web keeps working, with a hygiene warning.
+    writeFileSync(projectFile, readFileSync(projectFile, "utf8").replace("- Profiles: ai-systems, content-site", "- Profiles: ai-systems, web"));
+    const status = JSON.parse(engine(project, ["status", "--json"]).stdout);
+    expect(status.active).toEqual(["core", "ai-systems", "content-site"]);
+    const strict = engine(project, ["validate", "--strict"]);
+    expect(strict.status).toBe(1);
+    expect(strict.stdout).toContain("PROJECT.md: the web profile is now called content-site");
   });
 
   test("declared incompatibilities are enforced", () => {
     const template = templateCopy();
-    editJson(join(template, "profiles/web/profile.json"), (d) => (d.incompatible_with = ["application"]));
-    const result = python(template, "groundwork.py", ["init", "web", "application", "--dry-run"]);
+    editJson(join(template, ".groundwork/profiles/content-site/profile.json"), (d) => (d.incompatible_with = ["application"]));
+    const result = engine(template, ["init", "content-site", "application", "--dry-run"]);
     expect(result.status).toBe(1);
-    expect(result.stdout).toContain("the application and web profiles are declared incompatible");
+    expect(result.stdout).toContain("the application and content-site profiles are declared incompatible");
   });
 
   test("a new profile works without any code change", () => {
     const template = templateCopy();
-    const dir = join(template, "profiles/data-pipeline");
+    const dir = join(template, ".groundwork/profiles/data-pipeline");
     mkdirSync(join(dir, "templates/docs/data-pipeline"), { recursive: true });
     writeFileSync(join(dir, "README.md"), "# Data Pipeline Profile\n");
     writeFileSync(join(dir, "templates/docs/data-pipeline/LINEAGE.md"), "# Lineage\n");
@@ -100,7 +115,7 @@ describe("selection", () => {
         checks: [{ name: "Data quality", what: "Row counts and schemas are checked on every run." }],
       }),
     );
-    const result = python(template, "groundwork.py", ["init", "data-pipeline", "--dry-run"]);
+    const result = engine(template, ["init", "data-pipeline", "--dry-run"]);
     expect(result.stdout).toContain("docs/data-pipeline/LINEAGE.md");
     expect(result.stdout).toContain("Data quality (data-pipeline profile)");
     expect(result.status).toBe(0);
@@ -108,12 +123,12 @@ describe("selection", () => {
 });
 
 describe("composition", () => {
-  test("shared documents are created once, and checks are merged by name", () => {
-    const project = newProject("web,application");
+  test("shared documents are listed once, and checks are merged by name", () => {
+    const project = newProject("content-site,application");
     const agents = snapshot(project)["AGENTS.md"]!;
     expect(agents.match(/\| Accessibility \(/g)?.length).toBe(1);
-    const manifest = readJson(join(project, "scaffold-manifest.json"));
-    expect(manifest.files.filter((f: string) => f === "docs/design/DESIGN.md").length).toBe(1);
+    const plan = JSON.parse(engine(project, ["init", "content-site", "application", "--dry-run", "--json"]).stdout);
+    expect(plan.documents.filter((d: { path: string }) => d.path === "docs/design/DESIGN.md").length).toBe(1);
   });
 
   test("profile order never changes the result", () => {
@@ -125,15 +140,16 @@ describe("composition", () => {
   });
 
   test("required documents are the union of core and every active profile", () => {
-    const project = newProject("ai-systems,web");
-    const plan = JSON.parse(python(project, "groundwork.py", ["init", "ai-systems", "web", "--dry-run", "--json"]).stdout);
+    const project = newProject("ai-systems,content-site");
+    const plan = JSON.parse(engine(project, ["init", "ai-systems", "content-site", "--dry-run", "--json"]).stdout);
     const required = new Set<string>();
-    for (const id of ["core", "ai-systems", "web"]) {
-      for (const doc of readJson(join(project, `profiles/${id}/profile.json`)).documents) {
+    for (const id of ["core", "ai-systems", "content-site"]) {
+      for (const doc of readJson(join(project, `.groundwork/profiles/${id}/profile.json`)).documents) {
         if (doc.required) required.add(doc.path);
       }
     }
     expect(new Set(plan.documents.map((d: { path: string }) => d.path))).toEqual(required);
-    expect(plan.documents.every((d: { exists: boolean }) => d.exists)).toBe(true);
+    // Listed, not created: each is written when there is something to put in it.
+    expect(plan.documents.every((d: { path: string; action: string }) => (["PROJECT.md", "AGENTS.md"].includes(d.path) ? d.action === "keep" : d.action === "pending"))).toBe(true);
   });
 });

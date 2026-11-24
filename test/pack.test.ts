@@ -30,7 +30,7 @@ beforeAll(() => {
 
 describe("packed artifact", () => {
   test("contains the CLI and every template file, and nothing from development", () => {
-    for (const file of readJson(join(TEMPLATE, "scaffold-manifest.json")).files as string[]) {
+    for (const file of readJson(join(TEMPLATE, ".groundwork/manifest.json")).files as string[]) {
       const packed = file === ".gitignore" ? "template/_gitignore" : `template/${file}`;
       expect(contents).toContain(packed);
     }
@@ -55,14 +55,14 @@ describe("packed artifact", () => {
     expect(statSync(join(project, ".groundwork/config.json")).isFile()).toBe(true);
     const check = sh(join(bin, "groundwork"), ["validate", "--strict", "--strict-coverage"], project);
     expect(check.status).toBe(0);
-    expect(sh(join(bin, "groundwork"), ["profiles", "web"], project).status).toBe(0);
+    expect(sh(join(bin, "groundwork"), ["profiles", "content-site"], project).status).toBe(0);
     expect(sh(join(bin, "groundwork"), ["add", "docs/backend-api/DATA.md"], project).status).toBe(0);
     expect(sh(join(bin, "groundwork"), ["config"], project).out).toContain("Profiles: application, backend-api");
   });
 
   test("npm exec (what npx runs) works from the tarball", () => {
     const work = tempDir();
-    const result = sh("npm", ["exec", "--yes", `--package=${tarball}`, "--", "create-groundwork", "site", "--profiles", "web", "--yes"], work);
+    const result = sh("npm", ["exec", "--yes", `--package=${tarball}`, "--", "create-groundwork", "site", "--profiles", "content-site", "--yes"], work);
     expect(result.status).toBe(0);
     expect(result.out).toContain("Your project is ready.");
   }, 120_000);

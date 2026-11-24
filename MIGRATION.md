@@ -1,3 +1,52 @@
+# Migration to Groundwork 4.0: a lean start
+
+Groundwork 3.x generated a whole documentation set the moment a project was created: about 70 files, most of them templates waiting to be filled in. 4.0 starts a project with five files and writes everything else only once the developer has said what goes in it. It also cuts what made Groundwork heavier than it needed to be: the Python runtime, the seven-file system design, three progress states and the assumption that every test names a requirement.
+
+## What a new project gets
+
+| 3.2 | 4.0 |
+|---|---|
+| `scripts/`, `profiles/`, `scaffold-manifest.json` at the top level | Moved into `.groundwork/` (`.groundwork/scripts/`, `.groundwork/profiles/`, `.groundwork/manifest.json`) |
+| `docs/product/PRD.md`, `SPEC.md`, `docs/architecture/SYSTEM_DESIGN.md`, `BUILD.md`, `SECURITY.md`, `TEST_STRATEGY.md`, `REPOSITORY_STRUCTURE.md` shipped in place | Templates in `.groundwork/profiles/core/templates/`, created with `groundwork add PATH` when there is something to write |
+| Profile documents created by `init` | `init` records the profiles and adds their checks; documents are created one at a time with `add` |
+| Profiles chosen in the setup wizard | Chosen after discovery, with the agent (`--profiles` still works for scripts) |
+| ADR, plan and feature-spec templates in `docs/` | `.groundwork/blueprints/` |
+| `docs/README.md`, `scripts/README.md` | One reference page: `.groundwork/README.md` |
+| `docs/examples/` | `.groundwork/examples/` |
+| `.github/workflows/docs-check.yml`, `.github/pull_request_template.md` | Optional core documents: `groundwork add .github/workflows/docs-check.yml` |
+| `LICENSE.md`, `config/`, `infrastructure/`, `src/`, `tests/` placeholders | Removed: create them when you need them |
+| Python scripts: `groundwork.py`, `onboarding.py`, `check_docs.py` (Python 3.9+) | JavaScript: `groundwork.mjs`, `onboarding.mjs`, `checks.mjs` (Node.js 18+, no dependencies) |
+| Seven documents in `docs/architecture/system-design/` | Parts of `docs/architecture/SYSTEM_DESIGN.md`, present only when a profile needs them or the project adds them |
+| States `skipped`, `unknown`, `blocked` | `deferred`, with a note saying why |
+| The `web` profile, `docs/web/` | The `content-site` profile, `docs/content-site/` (`web` still works as an ID) |
+| Requirement IDs looked for in `src/` and `tests/` | Looked for in code wherever it lives; naming them in tests is the project's choice |
+
+## Decisions
+
+1. **No document before its content.** A template nobody has filled in is noise. Every document except `PROJECT.md` and `AGENTS.md` now has a template and is created when the agent (or developer) is about to write answers into it.
+2. **Missing is not wrong.** A required document that isn't written yet is `pending`: `groundwork status` still asks its questions in order and says to create it. Validation never fails on it (but see decision 11). Only `PROJECT.md` and `AGENTS.md`, which every project starts with, must exist.
+3. **Profiles after discovery.** Choosing a profile is a judgement about what the system does, which is exactly what discovery finds out. The wizard asks only for a name, a description, a folder and agent files; "Choose profiles now" is still offered at the review step.
+4. **Groundwork's machinery is out of sight.** Scripts, profiles, templates and blueprints are framework files, not the project's. They live in `.groundwork/`, which the ID and link checks skip.
+5. **The manifest lists Groundwork's files only.** Documents belong to the project, so new documents, ADRs and specs no longer need listing anywhere. The check is that Groundwork's own files under `.groundwork/` are intact.
+6. **One runtime.** Groundwork needed Node for the CLI and Python for the checks. Both did the same work, twice. The engine is now one set of JavaScript files that every project carries, so a project needs only Node, and CI needs no package install.
+7. **One system design document.** Seven files for one system's design was ceremony for most projects: a small system's design fits on a page or two. The parts are now sections of `SYSTEM_DESIGN.md`, present when a profile needs them, and a part that outgrows the page can still move to its own file with a summary and a link left behind.
+8. **States that mean different things.** Skipped, unknown, blocked and deferred all meant "not settled yet, come back to it". One state with a note says the same, and an agent no longer has to choose between near-synonyms.
+9. **Profiles named for what they're for.** "Web" read as "anything in a browser", but the profile is for content sites; a web app is an Application.
+10. **Traceability where it pays.** Naming requirement IDs in tests suits regulated or audited work, and is busywork elsewhere. The project decides, in `AGENTS.md`; the checks find IDs wherever the code lives.
+11. **Required means something.** A required document that is never written used to be invisible to `validate`. Once `PROJECT.md` says the project is in Development, it is a warning, unless it was deliberately deferred.
+
+## Upgrading a 3.x project
+
+Nothing has to change: a 3.x project keeps its own Python scripts and keeps working with them (`python3 scripts/groundwork.py <command>`, `python3 scripts/check_docs.py`). The 4.0 `groundwork` command doesn't run them; it says how to. To move to 4.0:
+
+1. Create a new 4.0 project with the same profiles somewhere else (`npx create-groundwork tmp --profiles <yours> --yes`). Copy its `.groundwork/scripts/`, `profiles/`, `blueprints/`, `examples/`, `README.md` and `manifest.json` into your project's `.groundwork/` folder. Keep your own `.groundwork/config.json` and `state.json`.
+2. Delete what moved into `.groundwork/`: `scripts/`, `profiles/`, `scaffold-manifest.json` and `docs/examples/` (its sample IDs fail the 4.0 checks). `docs/README.md`, the `_template` folders, `docs/architecture/adr/0000-template.md` and the placeholder READMEs (`config/`, `infrastructure/`, `src/`, `tests/`, `.github/`) can go too.
+3. Replace the Python commands: in `.github/workflows/docs-check.yml`, use the 4.0 one from `.groundwork/profiles/core/templates/.github/workflows/`; in `.claude/settings.json`, change the hook to `node "$CLAUDE_PROJECT_DIR/.groundwork/scripts/groundwork.mjs" status --brief`; in `AGENTS.md`, the `python3 …` command at the top becomes `node .groundwork/scripts/groundwork.mjs status`. Take `GROUNDWORK.md` from the new project and copy your preferences back into it. The 3.x `README.md` explains Groundwork with Python commands: replace those parts with the short Groundwork section from the new project's README.
+4. If you used the Web profile, change `web` to `content-site` on the Profiles line in `PROJECT.md`, move `docs/web/` to `docs/content-site/`, and change links to `docs/web/` to match.
+5. Fold the system design into one document. In `docs/architecture/SYSTEM_DESIGN.md`, rename "Context and high-level view" to "Context" and delete the "Seven-part system design" index. Run `groundwork add docs/architecture/SYSTEM_DESIGN.md`, which adds the parts your profiles need. Then, for each file in `docs/architecture/system-design/`, move its content into its part, or keep the file and leave a short summary and a link in the part.
+6. Run `groundwork mark --repair`. Your progress is kept: `skipped`, `unknown` and `blocked` become `deferred`, with the old name in the note, and entries for the old system-design paths are dropped. `groundwork status` then asks you to review the parts you moved content into.
+7. Run `groundwork validate`.
+
 # Migration to Groundwork 3.0: Profiles
 
 This file explains how Groundwork 2.1.3 became a profile-based scaffold, the decisions behind it, and how to upgrade an existing project. It is about the template, not your project — delete it once you have upgraded.

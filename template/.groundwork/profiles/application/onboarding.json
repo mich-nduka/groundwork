@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "questions": {
+    "release_channels": {
+      "ask": "How does the app reach people: app stores, a desktop installer, enterprise distribution? Are there beta channels?"
+    },
+    "supported_versions": {
+      "ask": "How long must older versions keep working once a new one ships?",
+      "why": "Installed apps stay on people's devices, so the server has to keep talking to old versions.",
+      "confirm": true
+    },
+    "rollout_plan": {
+      "ask": "How are releases rolled out and, if something goes wrong, rolled back?"
+    },
+    "store_review": {
+      "ask": "Which app stores' rules and review steps apply, and how long does a review usually take?",
+      "why": "A release reaches people only once the store approves it, so a fix takes days rather than minutes, and store rules (payments, privacy labels, account deletion) shape features.",
+      "applies_when": "The app is distributed through an app store."
+    },
+    "forced_update": {
+      "ask": "When an old version can no longer work with the services, how are people moved off it: a prompt to update, a required update, or a switch on the server?",
+      "why": "Without a way to require an update, every old version must be supported for as long as anyone still has it installed.",
+      "applies_when": "The app is installed on phones, tablets or computers, rather than used only in a browser.",
+      "confirm": true
+    },
+    "client_platforms": {
+      "ask": "Where does the app run: web browsers, iPhone and iPad, Android, desktop? Which comes first, and is each built separately or from shared code?",
+      "why": "The platforms decide the client architecture, what can be shared, how it is released and what it is tested on.",
+      "confirm": true
+    },
+    "device_permissions": {
+      "ask": "Which device features need the person's permission (camera, location, photos, contacts, notifications), and what does the app do when they say no?",
+      "why": "The operating system asks the person, stores reject apps that ask without a clear reason, and every refusal needs a working fallback.",
+      "applies_when": "The app is installed on phones, tablets or computers, rather than used only in a browser.",
+      "confirm": true
+    },
+    "push_notifications": {
+      "ask": "Does the app send push notifications? What triggers each one, and can people choose which they get?",
+      "explain": "A push notification is a message the operating system shows even when the app is closed, delivered through Apple's or Google's notification service.",
+      "applies_when": "The app is installed on phones, tablets or computers, or uses browser notifications."
+    },
+    "device_matrix": {
+      "ask": "Which devices, operating-system versions and screen sizes must the app work on, and which of them are tested before each release?",
+      "why": "Installed apps run on hardware nobody on the team controls. The list sets what 'works' means and what the end-to-end checks run on.",
+      "applies_when": "The app is installed on phones, tablets or computers, rather than used only in a browser."
+    },
+    "user_created_data": {
+      "ask": "What do users create or change in the app, and what happens to it when they leave?",
+      "why": "Data people create is the heart of an application's state model."
+    },
+    "offline_use": {
+      "ask": "Must the app work without an internet connection? If so, what happens when changes made offline conflict?",
+      "why": "Offline support changes how data is stored, synced and recovered. If the answer is no, the offline parts of the design can be skipped.",
+      "explain": "Syncing is copying changes between the device and the server once a connection returns."
+    },
+    "empty_error_states": {
+      "ask": "What should users see on first use, when there's nothing to show yet, and when an action fails?"
+    }
+  },
+  "documents": {
+    "docs/application/RELEASES.md": {
+      "purpose": "How installed client versions are released, supported, rolled out and rolled back.",
+      "stage": "as-needed",
+      "priority": 70,
+      "skip": "Created only when the app ships as an installed client.",
+      "sections": [
+        { "id": "channels", "heading": "Channels", "required": true, "questions": ["release_channels", "store_review"], "done_when": "Each distribution channel is listed with its review and approval steps." },
+        { "id": "supported", "heading": "Supported versions", "required": true, "questions": ["supported_versions", "forced_update"], "done_when": "The support window is stated and confirmed, with how people are moved off versions past it." },
+        { "id": "rollout", "heading": "Rollout", "required": true, "questions": ["rollout_plan"], "done_when": "Rollout steps are described." },
+        { "id": "rollback", "heading": "Rollback", "required": false, "uses": ["rollout_plan"], "done_when": "How to undo a bad release is described." }
+      ]
+    }
+  },
+  "needs": {
+    "docs/architecture/SYSTEM_DESIGN.md": ["domain", "behaviour", "architecture", "ui"]
+  },
+  "extends": {
+    "docs/architecture/SYSTEM_DESIGN.md": {
+      "domain": ["user_created_data"],
+      "behaviour": ["push_notifications"],
+      "architecture": ["client_platforms", "offline_use"],
+      "ui": ["empty_error_states"]
+    },
+    "docs/engineering/SECURITY.md": { "data-protection": ["device_permissions"] },
+    "docs/engineering/TEST_STRATEGY.md": { "data": ["device_matrix"] }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "id": "application",
+  "name": "Application",
+  "purpose": "Interactive web, mobile and desktop applications with real product behaviour: people sign in, create and change data, and move through multi-step workflows. Adds feature-level specification, the interaction model and the application architecture.",
+  "use_when": [
+    "People do work in the product: create, edit, manage or transact, not just read.",
+    "Screens depend on who the user is and what state their data is in.",
+    "The product has several features that each need their own requirements and acceptance criteria."
+  ],
+  "not_when": [
+    "The product is mostly published content with a contact form. Use Content site.",
+    "There is no user interface, only an API or service. Use Backend/API.",
+    "A single-page framework is in use. Technology alone never activates a profile."
+  ],
+  "requires": [],
+  "incompatible_with": [],
+  "documents": [
+    { "path": "docs/architecture/SYSTEM_DESIGN.md", "required": true },
+    { "path": "docs/design/DESIGN.md", "required": true },
+    { "path": "docs/engineering/SECURITY.md", "required": true },
+    { "path": "docs/engineering/TEST_STRATEGY.md", "required": true },
+    {
+      "path": "docs/application/RELEASES.md",
+      "required": false,
+      "when": "The app ships as an installed client (app store, desktop installer), so older versions stay in use after a release."
+    }
+  ],
+  "checks": [
+    { "name": "End-to-end", "what": "The critical user journeys from the PRD run end to end against a working build." },
+    { "name": "Accessibility", "what": "Automated accessibility checks on the main screens, against the standard named in DESIGN.md §6.7." }
+  ]
+}

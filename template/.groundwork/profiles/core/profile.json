@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "id": "core",
+  "name": "Groundwork Core",
+  "purpose": "The base every project gets, whatever it is: project definition, agent instructions, product and system requirements with traceable IDs, the architecture starting point, decisions and the shared checks. Always active; profiles add to it and never change it. A project starts with PROJECT.md and AGENTS.md only; every other document is written from its template once there is something to put in it.",
+  "documents": [
+    {
+      "path": "PROJECT.md",
+      "required": true
+    },
+    {
+      "path": "AGENTS.md",
+      "required": true
+    },
+    {
+      "path": "BUILD.md",
+      "required": true
+    },
+    {
+      "path": "docs/product/PRD.md",
+      "required": true
+    },
+    {
+      "path": "docs/product/SPEC.md",
+      "required": true
+    },
+    {
+      "path": "docs/architecture/SYSTEM_DESIGN.md",
+      "required": true
+    },
+    {
+      "path": "docs/engineering/SECURITY.md",
+      "required": false,
+      "when": "The project handles user data, accounts, payments, secrets or anything worth attacking."
+    },
+    {
+      "path": "docs/engineering/TEST_STRATEGY.md",
+      "required": false,
+      "when": "The project has code that needs more than one kind of test."
+    },
+    {
+      "path": "docs/architecture/REPOSITORY_STRUCTURE.md",
+      "required": false,
+      "when": "You are choosing how to lay out the repository: one repository or several, and where each app and package lives."
+    },
+    {
+      "path": "docs/design/DESIGN.md",
+      "required": false,
+      "when": "The product has a visual or interactive interface."
+    },
+    {
+      "path": "docs/architecture/contracts/README.md",
+      "required": false,
+      "when": "An interface has several consumers, outside teams or versioning needs, so it needs a written contract."
+    },
+    {
+      "path": ".github/workflows/docs-check.yml",
+      "required": false,
+      "when": "The project is on GitHub and you want the documentation checked on every push and pull request."
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "required": false,
+      "when": "The project takes pull requests and you want each one to name the requirements it serves."
+    }
+  ]
+}

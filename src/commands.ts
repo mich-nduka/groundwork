@@ -3,10 +3,13 @@
 //   groundwork <command> [options]         → create | profiles | init | add | validate | config
 //                                            | status | docs | mark | connect
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 import {
   findProject,
   GroundworkError,
+  legacyMessage,
   type Profile,
   type Project,
   type ProfileList,
@@ -26,17 +29,23 @@ Usage:
   npx create-groundwork [folder] [options]
   groundwork create [folder] [options]
 
-Without options, a short guided setup asks for the name, description,
-folder and profiles. Give everything as options to skip the questions.
+Without options, a short guided setup asks for the name, description and
+folder. Give everything as options to skip the questions.
+
+A new project starts lean: README.md, PROJECT.md, AGENTS.md, GROUNDWORK.md
+and .gitignore, with Groundwork's own files in .groundwork/. Profiles are
+chosen after discovery, and each document is written once there is something
+to put in it.
 
 Options:
   --name <name>            Project name (default: the folder name)
   --description <text>     One-line description
-  --profiles <ids>         Comma-separated profile IDs, or "none" for core only
+  --profiles <ids>         Choose profiles now instead of after discovery:
+                           comma-separated IDs, or "none" for core only
                            (see: groundwork profiles)
   --agents <ids>           Agent adapters to add: claude, gemini (comma-separated).
                            AGENTS.md works without one for most agents.
-  -y, --yes                Don't ask anything; requires a folder and --profiles
+  -y, --yes                Don't ask anything; requires a folder
   --dry-run                Show what would be created, write nothing
   -h, --help               Show this help
   -v, --version            Show the version
@@ -44,13 +53,15 @@ Options:
 Examples:
   npx create-groundwork
   npx create-groundwork parkmate
+  npx create-groundwork parkmate --description "Parking management platform" --yes
   npx create-groundwork parkmate --profiles application,backend-api --yes
 
 After creating the project, open it with your AI coding agent: AGENTS.md and
 GROUNDWORK.md guide it through documenting the project with you.
 
 Groundwork never overwrites files: the folder must be new or empty.
-Requires Python 3.9+ (the checks ship inside every project as Python scripts).`;
+Every project carries its own engine in .groundwork/scripts/, so its checks
+run anywhere Node.js 18+ is installed, with or without this CLI.`;
 
 const MAIN_HELP = `Groundwork ${VERSION} — minimum sufficient engineering documentation,
 adapted to what you're building through composable profiles.
@@ -60,9 +71,9 @@ Usage: groundwork <command> [options]
 Commands:
   create [folder]          Create a new project (same as npx create-groundwork)
   profiles [id]            List profiles, or show one in detail
-  init <id...> | none      Choose this project's profiles and create their documents
-  add <path>               Create an optional document from its template
-  validate                 Check the documentation (scripts/check_docs.py)
+  init <id...> | none      Choose this project's profiles (after discovery)
+  add <path>[#section]     Create a document from its template, when there's something to write in it
+  validate                 Check the documentation
   config                   Show this project's Groundwork configuration
   status                   Where documentation onboarding stands, and what's next
   docs [path]              Documents in use, or one document's sections and questions
@@ -79,39 +90,47 @@ Usage:
   groundwork profiles            Purpose, selection guidance and dependencies of each
   groundwork profiles <id>       Everything about one profile: documents, checks, dependencies
 
-Inside a project, the project's own profiles/ folder is used; elsewhere, the
-profiles bundled with this version of Groundwork.
+Inside a project, the project's own .groundwork/profiles/ folder is used;
+elsewhere, the profiles bundled with this version of Groundwork.
 
 Options:
   --json         Print the manifests as JSON
   -h, --help     Show this help`,
-  init: `Choose this project's profiles and create the documents they require.
+  init: `Choose this project's profiles.
 
 Usage:
-  groundwork init <id> [<id> ...] [--dry-run]
+  groundwork init <id> [<id> ...] [--why TEXT] [--dry-run]
   groundwork init none           Groundwork Core only
 
-Records the profiles in PROJECT.md, creates each missing required document
-from its template, adds the profiles' checks to the AGENTS.md tooling table,
-and lists new files in scaffold-manifest.json. Never overwrites or deletes:
-run it again with a new list to add or drop a profile. Profile order does
-not matter. Same as: python3 scripts/groundwork.py init
+Run it once discovery shows what the system does. Records the profiles in
+PROJECT.md and adds the profiles' checks to the AGENTS.md tooling table. It
+creates no documents: the profiles' documents appear in "groundwork status",
+and each is created with "groundwork add" once there is something to write in
+it. Never overwrites or deletes: run it again with a new list to add or drop
+a profile. Profile order does not matter.
+Same as: node .groundwork/scripts/groundwork.mjs init
 
 Options:
+  --why TEXT     Why these profiles fit, written to the Why line in PROJECT.md
   --dry-run      Show what would change, write nothing
   --json         Print the plan as JSON
   -h, --help     Show this help`,
-  add: `Create an optional document from its template, when its condition holds.
+  add: `Create a document from its template, once there is something to write in it.
 
 Usage:
-  groundwork add <path> [--dry-run]
+  groundwork add <path>[#section] [--dry-run]
 
-Example:
+Examples:
+  groundwork add docs/product/PRD.md
   groundwork add docs/ai-systems/RETRIEVAL.md
+  groundwork add docs/architecture/SYSTEM_DESIGN.md#execution
 
-The document must belong to core or an active profile ("groundwork profiles
-<id>" lists each profile's optional documents and their conditions).
-Same as: python3 scripts/groundwork.py add
+The document must belong to core or an active profile ("groundwork docs"
+lists them; "groundwork profiles <id>" shows each optional document's
+condition). A new document holds only the parts the active profiles need.
+On a document that exists, add copies in the parts the active profiles need
+and it lacks, or with #section the one part named; it never changes text
+already there. Same as: node .groundwork/scripts/groundwork.mjs add
 
 Options:
   --dry-run      Show what would change, write nothing
@@ -122,8 +141,8 @@ Options:
 Usage:
   groundwork validate [--strict] [--strict-coverage]
 
-Runs the project's own scripts/check_docs.py, so results and exit codes are
-identical to running it directly (python3 scripts/check_docs.py).
+Runs the project's own engine, so results and exit codes are identical to
+running it directly (node .groundwork/scripts/groundwork.mjs validate).
 
 Options:
   --strict            Hygiene warnings fail too
@@ -136,16 +155,15 @@ Usage:
 
 Shows the project name and profiles (from PROJECT.md), the Groundwork version,
 and which files Groundwork generated that have since changed or been deleted
-(from .groundwork/config.json). Same as: python3 scripts/groundwork.py config`,
+(from .groundwork/config.json). Same as: node .groundwork/scripts/groundwork.mjs config`,
   status: `Show where the project's documentation onboarding stands.
 
 Usage:
   groundwork status [--brief] [--json]
 
 Shows discovery progress, each document's state, items waiting for
-confirmation or review, skipped and deferred items, and the next questions to
-ask. AI agents run this at the start of a session (see GROUNDWORK.md).
-Same as: python3 scripts/groundwork.py status
+confirmation or review, deferred items, and the next questions to ask. AI agents run this at the start of a session (see GROUNDWORK.md).
+Same as: node .groundwork/scripts/groundwork.mjs status
 
 Options:
   --brief        A few lines, for an agent's session-start hook
@@ -157,7 +175,7 @@ Usage:
   groundwork docs                Every document of core and the active profiles, with its status
   groundwork docs <path>         One document: purpose, sections, questions and their states
 
-Same as: python3 scripts/groundwork.py docs
+Same as: node .groundwork/scripts/groundwork.mjs docs
 
 Options:
   --json         Print as JSON
@@ -170,16 +188,17 @@ Usage:
 
 Targets: a question ID (problem), a document (docs/product/PRD.md), a section
 (docs/product/PRD.md#scope), or discovery.
-States: answered, confirmed, assumed, skipped, not_applicable, deferred,
-unknown, blocked, or clear. A whole document takes skipped, deferred,
-not_applicable, unknown or blocked; discovery takes declined or complete.
+States: answered, confirmed, assumed, not_applicable, deferred, or clear.
+Deferred covers everything not settled yet (skipped for now, not known yet,
+waiting on something); say why with --note. A whole document takes deferred
+or not_applicable; discovery takes declined or complete.
 
 The state file records progress only; answers belong in the documents. A
 confirmed item changes back only with --reopen. Same as:
-python3 scripts/groundwork.py mark
+node .groundwork/scripts/groundwork.mjs mark
 
 Options:
-  --note <text>     Why (required for assumed and blocked)
+  --note <text>     Why (required for assumed)
   --source <who>    developer, repository or agent
   --reopen          Allow changing something the developer confirmed
   --repair          Rebuild a damaged state file, keeping every valid entry
@@ -218,16 +237,11 @@ function needProject(command: string, modifies: boolean): Project {
   const project = findProject();
   if (!project) {
     throw new GroundworkError(
-      `Not inside a Groundwork project (no scripts/check_docs.py with a Groundwork scaffold-manifest.json here or above).\n` +
+      `Not inside a Groundwork project (no .groundwork/ folder with Groundwork's scripts here or above).\n` +
         "Create one with: npx create-groundwork",
     );
   }
-  if (command !== "validate" && !project.hasEngine) {
-    throw new GroundworkError(
-      `${project.root} predates Groundwork 3.0 profiles (no scripts/groundwork.py).\n` +
-        "See MIGRATION.md in the create-groundwork package for how to upgrade it.",
-    );
-  }
+  if (project.legacy) throw new GroundworkError(legacyMessage(project.root));
   if (modifies && project.isBundledTemplate) {
     throw new GroundworkError(
       "This is the template bundled with Groundwork itself, not a project. Create a project with: groundwork create",
@@ -279,18 +293,11 @@ function profilesCommand(args: string[]): number {
   if (values.help) return print(HELP.profiles!);
   const project = findProject();
   const root = project?.root ?? TEMPLATE_ROOT;
-  const source = project && !project.isBundledTemplate ? `${project.root}/profiles` : `Groundwork ${VERSION}`;
-  if (project && !project.hasEngine) throw new GroundworkError(`${project.root} predates Groundwork 3.0 profiles.`);
-  if (project && !project.hasJsonEngine) {
-    // A Groundwork 3.0 project: show its own listing as that version prints it.
-    if (positionals.length || values.json) {
-      throw new GroundworkError(
-        "This project's scripts/groundwork.py is from Groundwork 3.0, which can only list all profiles.\n" +
-          "Run `groundwork profiles`, or copy scripts/ from a newer Groundwork (see MIGRATION.md).",
-      );
-    }
-    return runScript(project.root, "groundwork.py", ["list"], "inherit").status;
-  }
+  const source =
+    project && !project.isBundledTemplate
+      ? `${project.root}/${existsSync(join(project.root, ".groundwork", "profiles")) ? ".groundwork/profiles" : "profiles"}`
+      : `Groundwork ${VERSION}`;
+  if (project?.legacy) throw new GroundworkError(legacyMessage(project.root));
   const list = runEngine<ProfileList>(root, ["list"]);
   if (!list.ok) throw new GroundworkError((list.errors ?? []).map((e) => `FAIL: ${e}`).join("\n"));
   const [id] = positionals;
@@ -307,11 +314,12 @@ function profilesCommand(args: string[]): number {
   return print(Array.isArray(shown) ? formatProfileList(shown, source) : formatProfile(shown, list.profiles, source));
 }
 
-/** Pass a command through to the project's own groundwork.py. */
+/** Pass a command through to the project's own engine. */
 function engineCommand(command: "init" | "add" | "config", args: string[]): number {
   const { values, positionals } = parse(args, {
     json: { type: "boolean" },
     ...(command === "config" ? {} : { "dry-run": { type: "boolean" } }),
+    ...(command === "init" ? { why: { type: "string" } } : {}),
   } as const);
   if (values.help) return print(HELP[command]!);
   if (command === "init" && positionals.length === 0) {
@@ -320,19 +328,14 @@ function engineCommand(command: "init" | "add" | "config", args: string[]): numb
   if (command === "add" && positionals.length !== 1) throw new GroundworkError("Give exactly one document path.", 2);
   if (command === "config" && positionals.length) throw new GroundworkError("config takes no arguments.", 2);
   const project = needProject(command, command !== "config" && !(values as { "dry-run"?: boolean })["dry-run"]);
-  if ((command === "config" || values.json) && !project.hasJsonEngine) {
-    throw new GroundworkError(
-      `This project's scripts/groundwork.py is from Groundwork 3.0, which has no ${command === "config" ? "config command" : "--json output"}.\n` +
-        "Copy scripts/groundwork.py and scripts/check_docs.py from a newer Groundwork to get it (see MIGRATION.md).",
-    );
-  }
   const passthrough = [
     command,
     ...positionals,
+    ...((values as { why?: string }).why ? ["--why", (values as { why: string }).why] : []),
     ...((values as { "dry-run"?: boolean })["dry-run"] ? ["--dry-run"] : []),
     ...(values.json ? ["--json"] : []),
   ];
-  return runScript(project.root, "groundwork.py", passthrough, "inherit").status;
+  return runScript(project.root, passthrough, "inherit").status;
 }
 
 const ONBOARDING_OPTIONS = {
@@ -349,7 +352,7 @@ const ONBOARDING_OPTIONS = {
   connect: { json: { type: "boolean" }, "dry-run": { type: "boolean" } },
 } as const;
 
-/** Pass an onboarding command through to the project's own groundwork.py. */
+/** Pass an onboarding command through to the project's own engine. */
 function onboardingCommand(command: keyof typeof ONBOARDING_OPTIONS, args: string[]): number {
   const { values, positionals } = parse(args, ONBOARDING_OPTIONS[command]);
   if (values.help) return print(HELP[command]!);
@@ -361,19 +364,12 @@ function onboardingCommand(command: keyof typeof ONBOARDING_OPTIONS, args: strin
   }
   const modifies = (command === "mark" || (command === "connect" && positionals.length > 0)) && !flags["dry-run"];
   const project = needProject(command, modifies);
-  if (!project.hasOnboarding) {
-    throw new GroundworkError(
-      `This project's scripts/groundwork.py predates Groundwork 3.2, which added ${command}.
-` +
-        "Copy scripts/ and the profiles' onboarding.json files from a newer Groundwork to get it (see MIGRATION.md).",
-    );
-  }
   const passthrough: string[] = [command, ...positionals];
   for (const [key, value] of Object.entries(flags)) {
     if (key === "help" || value === undefined || value === false) continue;
     passthrough.push(value === true ? `--${key}` : `--${key}=${value}`);
   }
-  return runScript(project.root, "groundwork.py", passthrough, "inherit").status;
+  return runScript(project.root, passthrough, "inherit").status;
 }
 
 function validateCommand(args: string[]): number {
@@ -385,7 +381,7 @@ function validateCommand(args: string[]): number {
   if (positionals.length) throw new GroundworkError("validate takes no arguments.", 2);
   const project = needProject("validate", false);
   const flags = [...(values.strict ? ["--strict"] : []), ...(values["strict-coverage"] ? ["--strict-coverage"] : [])];
-  return runScript(project.root, "check_docs.py", flags, "inherit").status;
+  return runScript(project.root, ["validate", ...flags], "inherit").status;
 }
 
 export async function runGroundwork(argv: string[], prompter: Prompter | null = clackPrompter): Promise<number> {

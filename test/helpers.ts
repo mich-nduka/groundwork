@@ -44,8 +44,9 @@ export const createGroundwork = (args: string[], cwd: string, env?: Record<strin
   run("node", [CREATE, ...args], cwd, env);
 export const groundwork = (args: string[], cwd: string, env?: Record<string, string>) =>
   run("node", [GROUNDWORK, ...args], cwd, env);
-export const python = (root: string, script: string, args: string[], cwd = root) =>
-  run("python3", ["-I", join(root, "scripts", script), ...args], cwd);
+/** Run a project's own engine directly, as a user without the CLI would. */
+export const engine = (root: string, args: string[], cwd = root) =>
+  run("node", [join(root, ".groundwork", "scripts", "groundwork.mjs"), ...args], cwd);
 
 /** Create a project non-interactively and return its folder. */
 export function newProject(profiles: string, extra: string[] = []): string {

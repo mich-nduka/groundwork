@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "id": "ai-systems",
+  "name": "AI Systems",
+  "purpose": "Systems whose behaviour depends on AI models at run time: LLM features, retrieval, agents and model-driven workflows. Adds model integration and context management, evaluation and observability, and AI-specific safety and data governance.",
+  "use_when": [
+    "Users get output that a model produces at run time, or a model decides what the system does next.",
+    "Output quality cannot be proven by ordinary tests alone and has to be measured.",
+    "User or company data is sent to a model, or retrieved to ground its answers."
+  ],
+  "not_when": [
+    "AI was only used to write the code or the content. That is a way of working, not a system responsibility.",
+    "A model is called once at build time and its output is reviewed and committed like any other content.",
+    "An AI SDK is installed. Technology alone never activates a profile."
+  ],
+  "requires": [["application", "backend-api", "content-site"]],
+  "incompatible_with": [],
+  "documents": [
+    { "path": "docs/ai-systems/MODEL_INTEGRATION.md", "required": true },
+    { "path": "docs/ai-systems/EVALUATION.md", "required": true },
+    { "path": "docs/ai-systems/SAFETY.md", "required": true },
+    { "path": "docs/architecture/SYSTEM_DESIGN.md", "required": true },
+    { "path": "docs/engineering/SECURITY.md", "required": true },
+    { "path": "docs/engineering/TEST_STRATEGY.md", "required": true },
+    {
+      "path": "docs/ai-systems/RETRIEVAL.md",
+      "required": false,
+      "when": "The system retrieves documents or records to ground model output: search, retrieval-augmented generation (RAG) or long-term memory."
+    }
+  ],
+  "checks": [
+    { "name": "AI evaluation", "what": "The evaluation suite in EVALUATION.md runs and meets its thresholds before a model, prompt or retrieval change ships." },
+    { "name": "AI safety tests", "what": "Adversarial cases from SAFETY.md, including prompt injection and data leakage, run and pass." }
+  ]
+}

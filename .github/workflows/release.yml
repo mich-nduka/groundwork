@@ -21,15 +21,12 @@ jobs:
         with:
           node-version: 24 # npm 11.5.1+ is needed for trusted publishing
           registry-url: https://registry.npmjs.org
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - name: Tag matches package.json and template versions
         run: |
           test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
-          test "$(node -p "require('./package.json').version")" = "$(node -p "require('./template/scaffold-manifest.json').version")"
+          test "$(node -p "require('./package.json').version")" = "$(node -p "require('./template/.groundwork/manifest.json').version")"
       - run: bun run test
       - run: npm install -g npm@latest && npm --version
       - run: npm publish --provenance --access public

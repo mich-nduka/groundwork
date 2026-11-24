@@ -25,7 +25,7 @@ describe("help and version", () => {
   test("--version matches package.json and the bundled template", () => {
     expect(groundwork(["--version"], tempDir()).stdout.trim()).toBe(VERSION);
     expect(createGroundwork(["--version"], tempDir()).stdout.trim()).toBe(VERSION);
-    expect(readJson(join(TEMPLATE, "scaffold-manifest.json")).version).toBe(VERSION);
+    expect(readJson(join(TEMPLATE, ".groundwork/manifest.json")).version).toBe(VERSION);
   });
 });
 
@@ -34,24 +34,23 @@ describe("arguments and exit codes", () => {
     const dir = tempDir();
     expect(groundwork(["frobnicate"], dir).status).toBe(2);
     expect(groundwork(["create", "--bogus"], dir).status).toBe(2);
-    expect(createGroundwork(["a", "b", "--profiles", "web"], dir).status).toBe(2);
-    const noProfiles = createGroundwork(["app", "--yes"], dir);
-    expect(noProfiles.status).toBe(2);
-    expect(noProfiles.stderr).toContain("--profiles");
-    expect(existsSync(join(dir, "app"))).toBe(false);
+    expect(createGroundwork(["a", "b", "--profiles", "content-site"], dir).status).toBe(2);
+    const noFolder = createGroundwork(["--yes"], dir);
+    expect(noFolder.status).toBe(2);
+    expect(noFolder.stderr).toContain("Give a project folder");
   });
 
   test("profiles accept commas or repeated flags, and `none` means core only", () => {
     const parent = tempDir();
-    expect(createGroundwork(["a", "--profiles", "web", "--profiles", "application", "--yes"], parent).status).toBe(0);
-    expect(readFileSync(join(parent, "a/PROJECT.md"), "utf8")).toContain("- Profiles: application, web");
+    expect(createGroundwork(["a", "--profiles", "content-site", "--profiles", "application", "--yes"], parent).status).toBe(0);
+    expect(readFileSync(join(parent, "a/PROJECT.md"), "utf8")).toContain("- Profiles: application, content-site");
     expect(createGroundwork(["b", "--profiles", "none", "--yes"], parent).status).toBe(0);
     expect(readFileSync(join(parent, "b/PROJECT.md"), "utf8")).toContain("- Profiles: none");
   });
 
   test("--name sets the name independently of the folder", () => {
     const parent = tempDir();
-    expect(createGroundwork(["park-app", "--name", "Parkmate", "--profiles", "web", "--yes"], parent).status).toBe(0);
+    expect(createGroundwork(["park-app", "--name", "Parkmate", "--profiles", "content-site", "--yes"], parent).status).toBe(0);
     expect(readFileSync(join(parent, "park-app/PROJECT.md"), "utf8")).toContain("- Name: Parkmate");
   });
 
@@ -64,7 +63,7 @@ describe("arguments and exit codes", () => {
   });
 
   test("the folder's parent must exist", () => {
-    const result = createGroundwork(["missing/app", "--profiles", "web", "--yes"], tempDir());
+    const result = createGroundwork(["missing/app", "--profiles", "content-site", "--yes"], tempDir());
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("does not exist");
   });
@@ -72,7 +71,7 @@ describe("arguments and exit codes", () => {
 
 describe("project detection", () => {
   test("project commands outside a project fail clearly", () => {
-    for (const command of [["validate"], ["init", "web"], ["add", "docs/x.md"], ["config"]]) {
+    for (const command of [["validate"], ["init", "content-site"], ["add", "docs/x.md"], ["config"]]) {
       const result = groundwork(command, tempDir());
       expect(result.status).toBe(1);
       expect(result.stderr).toContain("Not inside a Groundwork project");
@@ -88,40 +87,25 @@ describe("project detection", () => {
   });
 
   test("commands work from any folder inside a project", () => {
-    const project = newProject("web");
-    const result = groundwork(["validate"], join(project, "docs", "web"));
+    const project = newProject("content-site");
+    mkdirSync(join(project, "src", "app"), { recursive: true });
+    const result = groundwork(["validate"], join(project, "src", "app"));
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("(profiles: web)");
+    expect(result.stdout).toContain("(profiles: content-site)");
   });
 
-  test("a Groundwork 2.x project can be validated but not initialised", () => {
-    const project = newProject("none");
-    // A 2.x project has the checker but no engine script.
+  test("a project made before Groundwork 4 (Python scripts) gets a clear message, not a crash", () => {
+    // 2.x and 3.x projects keep their Python scripts in scripts/.
     const legacy = join(tempDir(), "legacy");
     mkdirSync(join(legacy, "scripts"), { recursive: true });
-    writeFileSync(join(legacy, "scripts/check_docs.py"), readFileSync(join(project, "scripts/check_docs.py")));
+    writeFileSync(join(legacy, "scripts/check_docs.py"), "print('groundwork 3')\n");
     writeFileSync(join(legacy, "scaffold-manifest.json"), JSON.stringify({ name: "Groundwork", files: [] }));
-    expect(groundwork(["init", "web"], legacy).stderr).toContain("predates Groundwork 3.0 profiles");
-  });
-
-  test("a Groundwork 3.0 project (engine without --json or config) still works", () => {
-    const project = newProject("none");
-    // Stand-in for the 3.0 engine: list/init/add only, text output only.
-    writeFileSync(
-      join(project, "scripts/groundwork.py"),
-      [
-        "import sys",
-        "if sys.argv[1:] == ['list']: print('3.0 listing')",
-        "elif sys.argv[1] == 'init': print('3.0 init', *sys.argv[2:])",
-        "else: sys.exit(2)",
-      ].join("\n") + "\n",
-    );
-    expect(groundwork(["profiles"], project).stdout).toBe("3.0 listing\n");
-    expect(groundwork(["init", "web", "--dry-run"], project).stdout).toBe("3.0 init web --dry-run\n");
-    const config = groundwork(["config"], project);
-    expect(config.status).toBe(1);
-    expect(config.stderr).toContain("from Groundwork 3.0, which has no config command");
-    expect(groundwork(["profiles", "web"], project).stderr).toContain("can only list all profiles");
+    for (const command of [["validate"], ["init", "content-site"], ["status"], ["profiles"]]) {
+      const result = groundwork(command, legacy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("before 4.0, whose engine is Python scripts");
+      expect(result.stderr).toContain("python3 scripts/check_docs.py");
+    }
   });
 });
 
@@ -171,7 +155,7 @@ class Scripted implements Prompter {
 }
 
 describe("interactive creation", () => {
-  test("guided: questions come from the manifests, answers preselect profiles", async () => {
+  test("by default: four questions, a lean project, and profiles left for discovery", async () => {
     const parent = tempDir();
     const cwd = process.cwd();
     process.chdir(parent);
@@ -181,59 +165,78 @@ describe("interactive creation", () => {
         "Parking management platform", // description
         "", // folder: accept ./parkmate
         ["claude"], // agent files
-        "guided",
-        false, // ai-systems
-        true, // application
-        true, // backend-api
-        false, // web
-        ["application", "backend-api"], // keep the recommendation
         "create",
       ]);
-      const code = await create({ yes: false, dryRun: false }, p);
-      expect(code).toBe(0);
-      // One guidance note per profile, quoting its manifest.
-      const web = readJson(join(TEMPLATE, "profiles/web/profile.json"));
-      expect(p.shown.join("\n")).toContain(web.use_when[0]);
-      expect(p.shown).toContain("preselected: application,backend-api");
+      expect(await create({ yes: false, dryRun: false }, p)).toBe(0);
+      expect(p.asked).toEqual([
+        "Project name",
+        "One-line description (optional)",
+        "Where should it go?",
+        expect.stringContaining("Add files for a specific AI coding agent?"),
+        "Create the project?",
+      ]);
       const review = p.shown.find((s) => s.startsWith("Review"))!;
-      expect(review).toContain("Profiles:     Core (always), Application, Backend/API");
-      expect(review).toContain("+ docs/architecture/system-design/05-execution-and-resilience.md");
-      expect(review).toContain("Integration tests (backend-api)");
-      expect(review).toContain("docs/backend-api/DATA.md");
+      expect(review).toContain("Profiles:     chosen with your agent");
+      expect(review).toContain("+ PROJECT.md");
+      expect(review).toContain("No other documents yet");
       expect(review).toContain("Agent files:  Claude Code (plus AGENTS.md for every agent)");
       expect(p.shown.at(-1)).toBe("Your project is ready.");
       expect(readFileSync(join(parent, "parkmate/PROJECT.md"), "utf8")).toContain("- Name: Parkmate");
+      expect(readFileSync(join(parent, "parkmate/PROJECT.md"), "utf8")).toContain("- Profiles: [not chosen yet]");
       expect(readFileSync(join(parent, "parkmate/CLAUDE.md"), "utf8")).toContain("@AGENTS.md");
+      expect(existsSync(join(parent, "parkmate/docs"))).toBe(false);
       const done = p.shown.find((s) => s.startsWith("Groundwork is ready"))!;
-      expect(done).toContain("Core documents: 6");
-      expect(done).toContain("Profile documents: 10");
+      expect(done).toContain("Documentation check passed");
       expect(done).toContain("Open this project with your AI coding agent");
     } finally {
       process.chdir(cwd);
     }
   });
 
+  test("guided selection from the review: questions come from the manifests, answers preselect profiles", async () => {
+    const parent = tempDir();
+    const p = new Scripted([
+      "Parkmate", "", join(parent, "parkmate"), [],
+      "change", // choose profiles now
+      "guided",
+      false, // ai-systems
+      true, // application
+      true, // backend-api
+      false, // content-site
+      ["application", "backend-api"], // keep the recommendation
+      "create",
+    ]);
+    expect(await create({ yes: false, dryRun: false }, p)).toBe(0);
+    const web = readJson(join(TEMPLATE, ".groundwork/profiles/content-site/profile.json"));
+    expect(p.shown.join("\n")).toContain(web.use_when[0]);
+    expect(p.shown).toContain("preselected: application,backend-api");
+    const reviews = p.shown.filter((s) => s.startsWith("Review"));
+    expect(reviews[1]).toContain("Profiles:     Core (always), Application, Backend/API");
+    expect(readFileSync(join(parent, "parkmate/PROJECT.md"), "utf8")).toContain("- Profiles: application, backend-api");
+    expect(existsSync(join(parent, "parkmate/docs"))).toBe(false);
+  });
+
   test("AI Systems alone is refused and selection is asked again", async () => {
     const parent = tempDir();
-    const p = new Scripted(["ai-demo", "", join(parent, "ai-demo"), [], "direct", ["ai-systems"], ["ai-systems", "web"], "create"]);
+    const p = new Scripted(["ai-demo", "", join(parent, "ai-demo"), [], "change", "direct", ["ai-systems"], ["ai-systems", "content-site"], "create"]);
     expect(await create({ yes: false, dryRun: false }, p)).toBe(0);
     expect(p.shown.some((s) => s.startsWith("ERROR") && s.includes("ai-systems profile requires one of"))).toBe(true);
-    expect(readFileSync(join(parent, "ai-demo/PROJECT.md"), "utf8")).toContain("- Profiles: ai-systems, web");
+    expect(readFileSync(join(parent, "ai-demo/PROJECT.md"), "utf8")).toContain("- Profiles: ai-systems, content-site");
   });
 
   test("core only, changing profiles from the review, and dependencies shown", async () => {
     const parent = tempDir();
-    const p = new Scripted(["tool", "", join(parent, "tool"), [], "direct", ["ai-systems", "application"], "change", [], "create"]);
+    const p = new Scripted(["tool", "", join(parent, "tool"), [], "change", "direct", ["ai-systems", "application"], "change", [], "create"]);
     expect(await create({ yes: false, dryRun: false }, p)).toBe(0);
     const reviews = p.shown.filter((s) => s.startsWith("Review"));
-    expect(reviews[0]).toContain("AI Systems requires one of Web, Application or Backend/API — satisfied");
-    expect(reviews[1]).toContain("Profiles:     Core (always)\n");
+    expect(reviews[1]).toContain("AI Systems requires one of Application, Backend/API or Content site — satisfied");
+    expect(reviews[2]).toContain("Profiles:     Core (always)\n");
     expect(readFileSync(join(parent, "tool/PROJECT.md"), "utf8")).toContain("- Profiles: none");
   });
 
   test("cancelling at the review creates nothing", async () => {
     const parent = tempDir();
-    const p = new Scripted(["x", "", join(parent, "x"), [], "direct", ["web"], "cancel"]);
+    const p = new Scripted(["x", "", join(parent, "x"), [], "cancel"]);
     expect(await create({ yes: false, dryRun: false }, p)).toBe(1);
     expect(existsSync(join(parent, "x"))).toBe(false);
   });

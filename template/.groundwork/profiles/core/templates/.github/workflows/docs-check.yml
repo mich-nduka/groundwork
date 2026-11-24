@@ -1,0 +1,27 @@
+name: Docs check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # --strict fails on errors and hygiene warnings (invalid status
+      # values, unserved capabilities, documents from inactive profiles,
+      # profile checks missing from AGENTS.md, required documents nobody
+      # wrote or deferred once PROJECT.md says Development). It does not fail
+      # on coverage warnings (unreferenced requirements). If the project
+      # names requirement IDs in its tests (see the code standards in
+      # AGENTS.md), add --strict-coverage once every requirement is
+      # referenced somewhere, so coverage warnings also fail.
+      - run: node .groundwork/scripts/groundwork.mjs validate --strict

@@ -1,5 +1,5 @@
 // npm never packs files named .gitignore. Before packing, copy the
-// template's .gitignore to _gitignore (scripts/groundwork.py `new` restores
+// template's .gitignore to _gitignore (.groundwork/scripts/groundwork.mjs `new` restores
 // the name); after packing, remove the copy again.
 import { copyFileSync, rmSync } from "node:fs";
 

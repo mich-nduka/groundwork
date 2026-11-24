@@ -1,7 +1,8 @@
 // Creating a new project: the interactive wizard and the non-interactive
-// path. Both end in the same engine call (`groundwork.py new`), which
-// validates the selection, builds the project in a staging folder and moves
-// it into place only if everything succeeded.
+// path. Both end in the same engine call (`groundwork.mjs new`), which builds
+// the project in a staging folder and moves it into place only if everything
+// succeeded. A new project is lean: a few entry files, with profiles chosen
+// and documents written later, once discovery has something to put in them.
 
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
@@ -23,7 +24,7 @@ export interface CreateOptions {
   dir?: string;
   name?: string;
   description?: string;
-  /** Profile IDs; ["none"] or [] means core only. Undefined means "not given". */
+  /** Profile IDs; ["none"] means core only. Undefined means "chosen after discovery". */
   profiles?: string[];
   /** Agent adapters (claude, gemini). Undefined means "not given": the wizard asks. */
   agents?: string[];
@@ -35,7 +36,8 @@ interface Answers {
   name: string;
   description: string;
   destination: string;
-  profiles: string[];
+  /** Undefined: chosen after discovery. [] means core only. */
+  profiles?: string[];
   agents: string[];
 }
 
@@ -65,7 +67,7 @@ export function loadProfiles(): Profile[] {
 }
 
 function generate(answers: Answers, dryRun: boolean): NewResult {
-  const ids = answers.profiles.length ? answers.profiles : ["none"];
+  const profiles = answers.profiles === undefined ? [] : ["--profiles", ...(answers.profiles.length ? answers.profiles : ["none"])];
   return runEngine<NewResult>(TEMPLATE_ROOT, [
     "new",
     answers.destination,
@@ -73,8 +75,7 @@ function generate(answers: Answers, dryRun: boolean): NewResult {
     `--description=${answers.description}`,
     ...(dryRun ? ["--dry-run"] : []),
     ...(answers.agents.length ? ["--agents", ...answers.agents] : []),
-    "--profiles",
-    ...ids,
+    ...profiles,
   ]);
 }
 
@@ -103,29 +104,29 @@ function profileNames(ids: string[], all: Profile[]): string[] {
   return ids.map((id) => all.find((p) => p.id === id)?.name ?? id);
 }
 
+function profileText(answers: Answers, all: Profile[]): string {
+  if (answers.profiles === undefined) return "chosen with your agent, once it's clear what the system does";
+  return ["Core (always)", ...profileNames(answers.profiles, all)].join(", ");
+}
+
 function reviewText(answers: Answers, plan: NewResult, all: Profile[]): string {
-  const init = plan.init;
-  const created = init.documents.filter((d) => d.action === "create").map((d) => d.path);
   const lines = [
     `Project:      ${answers.name}`,
     ...(answers.description ? [`Description:  ${answers.description}`] : []),
     `Folder:       ${display(answers.destination)}`,
-    `Profiles:     ${["Core (always)", ...profileNames(init.profiles, all)].join(", ")}`,
+    `Profiles:     ${profileText(answers, all)}`,
+    "",
+    "Files:",
+    ...plan.visibleFiles.map((path) => `  + ${path}`),
+    "  + .groundwork/  (Groundwork's scripts, profiles and templates)",
+    "",
+    "No other documents yet: each is written once you've said what goes in it.",
   ];
-  const deps = init.profiles.flatMap((id) => {
+  const deps = (plan.init?.profiles ?? []).flatMap((id) => {
     const profile = all.find((p) => p.id === id);
     return profile ? describeRequires(profile, all).map((r) => `${profile.name} requires ${r} — satisfied`) : [];
   });
   if (deps.length) lines.push("", "Dependencies:", ...deps.map((d) => `  ✓ ${d}`));
-  lines.push("", `Files: ${plan.files} from Groundwork (core documents, profiles, scripts)${created.length ? ", plus:" : ""}`);
-  lines.push(...created.map((path) => `  + ${path}`));
-  const checks = init.checks;
-  if (checks.length) {
-    lines.push("", "Engineering checks added to AGENTS.md:", ...checks.map((c) => `  - ${c.name} (${c.profile})`));
-  }
-  if (init.optional.length) {
-    lines.push("", "Optional documents, for later (groundwork add <path>):", ...init.optional.map((o) => `  - ${o.path}`));
-  }
   lines.push("", `Agent files:  ${agentText(answers.agents)}`);
   return lines.join("\n");
 }
@@ -136,51 +137,30 @@ function agentText(ids: string[]): string {
 }
 
 function completionText(answers: Answers, result: NewResult, all: Profile[], validated: boolean, check: string): string {
-  const names = profileNames(result.init.profiles, all);
-  const documents = result.init.documents;
-  const core = documents.filter((d) => d.requiredBy.includes(CORE)).length;
-  const profile = documents.length - core;
   const lines = [
-    `Project: ${answers.name}`,
+    `Project:  ${answers.name}`,
+    `Profiles: ${profileText(answers, all)}`,
+    `Files:    ${result.visibleFiles.join(", ")}, plus .groundwork/`,
+    `Agents:   ${agentText(result.agents ?? answers.agents)}`,
     "",
-    "Selected profiles:",
-    ...(names.length ? names.map((n) => `  - ${n}`) : ["  - none (Groundwork Core only)"]),
-    "",
-    "Documentation:",
-    `  - Core documents: ${core}`,
-    ...(profile ? [`  - Profile documents: ${profile}`] : []),
-    ...(result.init.optional.length ? [`  - Optional documents: ${result.init.optional.length} available when needed`] : []),
-    `  - Agent files: ${agentText(result.agents ?? answers.agents)}`,
-    "",
-    "Validation:",
   ];
-  if (validated) {
-    lines.push(
-      `  ${green("✓")} Profile selection, dependencies and document ownership`,
-      `  ${green("✓")} Required documents present`,
-      `  ${green("✓")} Manifest, requirement IDs, links and onboarding definitions`,
-    );
-  } else {
-    lines.push(`  ${red("✗")} The documentation check reported problems:`, ...check.trim().split("\n").map((l) => `    ${l}`));
-  }
+  if (validated) lines.push(`${green("✓")} Documentation check passed`);
+  else lines.push(`${red("✗")} The documentation check reported problems:`, ...check.trim().split("\n").map((l) => `  ${l}`));
   lines.push(
     "",
     "Next step:",
     `  cd ${display(result.destination)}`,
-    "  Open this project with your AI coding agent. Groundwork guides the agent",
-    "  through understanding your project and preparing the documentation it needs.",
+    "  Open this project with your AI coding agent. It asks about the project",
+    "  first, and writes each document only once you've given it something to",
+    "  put there.",
     "",
-    "You can also run:",
-    "  groundwork status      where the documentation stands",
-    "  groundwork docs        the documents in use",
-    "  groundwork profiles    what each profile adds",
-    "  groundwork validate    check the documentation",
+    "Any time:  groundwork status",
   );
   return lines.join("\n");
 }
 
 function finish(answers: Answers, result: NewResult, all: Profile[]) {
-  const check = runScript(result.destination, "check_docs.py", [], "capture");
+  const check = runScript(result.destination, ["validate"], "capture");
   return { ok: check.status === 0, text: completionText(answers, result, all, check.status === 0, check.stdout + check.stderr) };
 }
 
@@ -263,11 +243,10 @@ async function wizard(options: CreateOptions, p: Prompter, all: Profile[]): Prom
           initialValues: [],
         }));
 
-  let profiles = options.profiles ? options.profiles.filter((id) => id !== "none") : [];
-  let skipSelection = options.profiles !== undefined;
+  // Profiles are chosen after discovery unless given as an option; "change
+  // profiles" in the review step offers the guided selection.
+  let profiles = options.profiles?.filter((id) => id !== "none");
   for (;;) {
-    if (!skipSelection) profiles = await chooseProfiles(p, all, profiles);
-    skipSelection = false;
     const answers: Answers = { name: name.trim(), description: description.trim(), destination, profiles, agents };
     const plan = generate(answers, true);
     if (!plan.ok) {
@@ -276,6 +255,7 @@ async function wizard(options: CreateOptions, p: Prompter, all: Profile[]): Prom
       const errors = plan.errors ?? [];
       for (const error of errors) p.error(error.replace(/^PROJECT\.md: /, ""));
       if (!errors.length || !errors.every((e) => e.startsWith("PROJECT.md: "))) return null;
+      profiles = await chooseProfiles(p, all, profiles ?? []);
       continue;
     }
     p.note(reviewText(answers, plan, all), "Review");
@@ -284,13 +264,18 @@ async function wizard(options: CreateOptions, p: Prompter, all: Profile[]): Prom
       message: options.dryRun ? "Dry run — nothing will be written. Continue?" : "Create the project?",
       options: [
         { value: "create", label: options.dryRun ? "Show the result" : "Create it" },
-        { value: "change", label: "Change profiles" },
+        {
+          value: "change",
+          label: profiles === undefined ? "Choose profiles now" : "Change profiles",
+          hint: profiles === undefined ? "optional: your agent can recommend them after discovery" : undefined,
+        },
         { value: "cancel", label: "Cancel" },
       ],
       initialValue: "create",
     });
     if (next === "create") return answers;
     if (next === "cancel") return null;
+    profiles = await chooseProfiles(p, all, profiles ?? []);
   }
 }
 
@@ -315,7 +300,7 @@ export async function create(options: CreateOptions, prompter: Prompter | null):
     }
     if (options.dryRun) {
       spin.stop("Dry run complete — nothing was written.");
-      prompter.outro(`${display(answers.destination)} would be created with ${result.files} files.`);
+      prompter.outro(`${display(answers.destination)} would be created with ${result.visibleFiles.length} files plus .groundwork/.`);
       return 0;
     }
     spin.stop("Project created.");
@@ -325,23 +310,16 @@ export async function create(options: CreateOptions, prompter: Prompter | null):
     return done.ok ? 0 : 1;
   }
 
-  // Non-interactive: everything must be given explicitly.
+  // Non-interactive: a folder (or name) is required; profiles are optional.
   if (!options.dir && !options.name) {
-    throw new GroundworkError("Give a project folder, for example: create-groundwork my-project --profiles web", 2);
-  }
-  if (options.profiles === undefined) {
-    throw new GroundworkError(
-      "Choose profiles with --profiles (for example --profiles application,backend-api, or --profiles none for core only).\n" +
-        "Run `groundwork profiles` to see them, or run without --yes in a terminal for guided selection.",
-      2,
-    );
+    throw new GroundworkError("Give a project folder, for example: create-groundwork my-project", 2);
   }
   const name = options.name ?? options.dir!.split(/[\\/]/).filter(Boolean).at(-1)!;
   const answers: Answers = {
     name,
     description: options.description ?? "",
     destination: resolve(options.dir ?? slug(name)),
-    profiles: options.profiles.filter((id) => id !== "none"),
+    profiles: options.profiles?.filter((id) => id !== "none"),
     agents: options.agents ?? [],
   };
   const result = generate(answers, options.dryRun);
